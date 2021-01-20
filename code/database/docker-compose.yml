@@ -2,10 +2,10 @@ version: "3"
 services:
   db:
     image: mariadb:latest
-    container_name: test-db
+    container_name: pwp-test-db
     restart: always
     volumes:
-      - mariadb-data:/var/lib/mysql
+      - pwp-mariadb-data:/var/lib/mysql
     ports:
       - 6969:3306
     environment:
@@ -21,4 +21,4 @@ services:
       - 8080:8080
 
 volumes:
-  mariadb-data:
+  pwp-mariadb-data:
