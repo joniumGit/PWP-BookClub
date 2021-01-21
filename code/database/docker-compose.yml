@@ -6,6 +6,8 @@ services:
     restart: always
     volumes:
       - pwp-mariadb-data:/var/lib/mysql
+      - ./sql/init.sql:/init/init.sql
+    command: "mysqld --init-file /init/init.sql"
     ports:
       - 6969:3306
     environment:
