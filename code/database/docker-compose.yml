@@ -2,25 +2,30 @@ version: "3"
 services:
   db:
     image: mariadb:latest
-    container_name: pwp-test-db
+    container_name: pwp-db
     restart: always
     volumes:
       - pwp-mariadb-data:/var/lib/mysql
-      - ./sql/init.sql:/init/init.sql
-    command: "mysqld --init-file /init/init.sql"
+      - ./sql/:/docker-entrypoint-initdb.d/
     ports:
       - 6969:3306
     environment:
       character-set-server: utf8mb4
       collation-server: utf8mb4_unicode_ci
-      MYSQL_ROOT_PASSWORD: test
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/root_pass
       TZ: Europe/Helsinki
+    secrets:
+      - root_pass
 
   adminer:
     image: adminer
     restart: always
     ports:
       - 8080:8080
+
+secrets:
+  root_pass:
+    file: ./sql/book-club-root.txt
 
 volumes:
   pwp-mariadb-data:
