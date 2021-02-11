@@ -6,9 +6,9 @@ services:
     restart: always
     volumes:
       - pwp-mariadb-data:/var/lib/mysql
-      - ./sql/:/docker-entrypoint-initdb.d/
+      - ./setup/:/docker-entrypoint-initdb.d/
     ports:
-      - 6969:3306
+      - "127.0.0.1:6969:3306"
     environment:
       character-set-server: utf8mb4
       collation-server: utf8mb4_unicode_ci
@@ -21,11 +21,11 @@ services:
     image: adminer
     restart: always
     ports:
-      - 8080:8080
+      - "127.0.0.1:8080:8080"
 
 secrets:
   root_pass:
-    file: ./sql/book-club-root.txt
+    file: ./setup/book-club-root.txt
 
 volumes:
   pwp-mariadb-data:
