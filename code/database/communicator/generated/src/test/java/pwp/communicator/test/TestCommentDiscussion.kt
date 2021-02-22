@@ -1,11 +1,11 @@
-package test
+package pwp.communicator.test
 
 import Persist
-import getDao
 import log
 import org.jooq.DSLContext
 import org.jooq.exception.DataAccessException
 import org.junit.jupiter.api.*
+import pwp.communicator.getDao
 import pwp.generated.BookClub
 import pwp.generated.tables.daos.*
 import pwp.generated.tables.pojos.*

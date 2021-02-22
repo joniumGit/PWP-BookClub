@@ -29,4 +29,4 @@ Also, everything should have their own __README.md__ e.g. *[code/database/__read
 
 Each part of the project has their own readme and instructions on how to run them:
 
-* [PWP Database](code/database/README.md)
+* [PWP Database](code/database)

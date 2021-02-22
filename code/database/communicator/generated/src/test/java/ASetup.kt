@@ -1,6 +1,7 @@
 import org.jooq.DSLContext
 import org.jooq.impl.TableImpl
 import org.junit.jupiter.api.*
+import pwp.communicator.forEach
 import pwp.generated.BookClub
 import java.sql.Connection
 import kotlin.reflect.KVisibility

@@ -1,9 +1,9 @@
-package test
+package pwp.communicator.test
 
-import getDao
 import org.jooq.DSLContext
 import org.jooq.exception.DataAccessException
 import org.junit.jupiter.api.*
+import pwp.communicator.getDao
 import pwp.generated.enums.UserBookListingReadingStatus
 import pwp.generated.tables.daos.ReviewsDao
 import pwp.generated.tables.daos.UserBookListingDao

@@ -1,11 +1,13 @@
-package test
+package pwp.communicator.test
 
+import DB
 import DBInject
-import getDao
 import log
 import org.jooq.DSLContext
 import org.jooq.impl.DAOImpl
 import org.junit.jupiter.api.*
+import pwp.communicator.Helpers
+import pwp.communicator.getDao
 import pwp.generated.tables.daos.*
 import pwp.generated.tables.pojos.*
 import randomHandle
@@ -18,11 +20,25 @@ import kotlin.random.Random
 @Disabled("Root class")
 @DBInject
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-open class DBTest(
+abstract class DBTest(
     private val populateUsers: Boolean = true,
     private val populateBooks: Boolean = true,
     private val populateClubs: Boolean = true
 ) {
+
+    @Suppress("unused")
+    companion object CONSTANTS {
+        private const val DEFAULT_COUNT = 100
+        const val USER_COUNT: Int = DEFAULT_COUNT
+        const val BOOK_COUNT: Int = DEFAULT_COUNT
+        const val CLUB_MEMBER_COUNT: Int = 10
+        const val CLUB_COUNT: Int = USER_COUNT / CLUB_MEMBER_COUNT
+
+        init {
+            Helpers.initialize(DB.context)
+        }
+
+    }
 
     private inline fun <P> DAOImpl<*, P, *>.insertPrint(
         range: IntRange = (0..99),
@@ -140,12 +156,4 @@ open class DBTest(
     @AfterAll
     fun revert(connection: Connection) = connection.rollback(savepoint)
 
-    @Suppress("unused")
-    companion object CONSTANTS {
-        private const val DEFAULT_COUNT = 100
-        const val USER_COUNT: Int = DEFAULT_COUNT
-        const val BOOK_COUNT: Int = DEFAULT_COUNT
-        const val CLUB_MEMBER_COUNT: Int = 10
-        const val CLUB_COUNT: Int = USER_COUNT / CLUB_MEMBER_COUNT
-    }
 }

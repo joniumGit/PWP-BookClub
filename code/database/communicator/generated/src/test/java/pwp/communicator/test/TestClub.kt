@@ -1,4 +1,4 @@
-package test
+package pwp.communicator.test
 
 import org.jooq.DSLContext
 import org.junit.jupiter.api.DisplayName
