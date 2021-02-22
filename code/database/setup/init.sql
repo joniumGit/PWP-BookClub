@@ -4,10 +4,6 @@ This file is only for the main schema of the database.
 CREATE DATABASE book_club CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE book_club;
 
--- jooq
-CREATE USER IF NOT EXISTS 'jooq'@'%' IDENTIFIED BY 'jooq';
-GRANT ALL ON book_club.* TO 'jooq'@'%';
-
 -- Users
 CREATE USER IF NOT EXISTS 'bk_api_user'@'%' IDENTIFIED BY 'should_be_created';
 CREATE USER IF NOT EXISTS 'bk_api_maintenance'@'%' IDENTIFIED BY 'should_be_created';
@@ -27,36 +23,29 @@ FLUSH PRIVILEGES;
 CREATE TABLE users
 (
     id          BIGINT UNSIGNED NOT NULL,
-    username    VARCHAR(64)     NOT NULL,
-    description VARCHAR(256)    NULL DEFAULT NULL,
 
-    deleted     TINYINT(1)           DEFAULT 0,
-    created_at  DATETIME             DEFAULT CURRENT_TIMESTAMP,
-    updated_at  DATETIME        NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    username    VARCHAR(64)     NOT NULL,
+    description VARCHAR(256)    NULL     DEFAULT NULL,
+
+    deleted     TINYINT(0)      NOT NULL DEFAULT 0,
+    created_at  DATETIME                 DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME        NULL     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY pk_users (id),
     UNIQUE INDEX idx_users_username (username),
     INDEX idx_users_deleted (deleted)
 ) ENGINE = InnoDB;
 
-CREATE TABLE user_icon
-(
-    user_id  BIGINT UNSIGNED NOT NULL,
-    icon_url TINYTEXT,
-
-    PRIMARY KEY pk_user_icon (user_id),
-    CONSTRAINT FOREIGN KEY fk_ui_user_id (user_id) REFERENCES users (id) ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE = InnoDB;
-
 CREATE TABLE clubs
 (
     id          BIGINT UNSIGNED NOT NULL,
-    handle      VARCHAR(64)     NOT NULL,
-    description VARCHAR(2048)   NULL DEFAULT NULL,
 
-    deleted     TINYINT(1)           DEFAULT 0,
-    created_at  DATETIME             DEFAULT CURRENT_TIMESTAMP,
-    updated_at  DATETIME        NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    handle      VARCHAR(64)     NOT NULL,
+    description VARCHAR(2048)   NULL     DEFAULT NULL,
+
+    deleted     TINYINT(0)      NOT NULL DEFAULT 0,
+    created_at  DATETIME                 DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME        NULL     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY pk_clubs (id),
     UNIQUE INDEX idx_clubs_handle (handle),
@@ -66,14 +55,15 @@ CREATE TABLE clubs
 CREATE TABLE books
 (
     id          BIGINT UNSIGNED NOT NULL,
+
     handle      VARCHAR(64)     NOT NULL,
     full_name   VARCHAR(256)    NOT NULL,
     description TEXT,
-    pages       INTEGER         NULL DEFAULT NULL,
+    pages       INTEGER         NULL     DEFAULT NULL,
 
-    deleted     TINYINT(1)           DEFAULT 0,
-    created_at  DATETIME             DEFAULT CURRENT_TIMESTAMP,
-    updated_at  DATETIME        NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    deleted     TINYINT(0)      NOT NULL DEFAULT 0,
+    created_at  DATETIME                 DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME        NULL     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY pk_books (id),
     UNIQUE INDEX idx_books_handle (handle),
@@ -84,32 +74,26 @@ CREATE TABLE books
 CREATE TABLE discussions
 (
     id         BIGINT UNSIGNED NOT NULL,
+
     topic      TEXT,
 
-    deleted    TINYINT(1)           DEFAULT 0,
-    created_at DATETIME             DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME        NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    deleted    TINYINT(0)      NOT NULL DEFAULT 0,
+    created_at DATETIME                 DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME        NULL     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY pk_discussions (id),
     INDEX idx_discussion_deleted (deleted)
 ) ENGINE = InnoDB;
 
-CREATE TABLE moderated_discussion
-(
-    discussion_id BIGINT UNSIGNED NOT NULL,
-
-    PRIMARY KEY pd_md (discussion_id),
-    CONSTRAINT FOREIGN KEY fk_md_discussion_id (discussion_id) REFERENCES discussions (id) ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE = InnoDB;
-
 CREATE TABLE comments_data
 (
     id         BIGINT UNSIGNED NOT NULL,
+
     user_id    BIGINT UNSIGNED,
     content    TEXT,
 
-    pending    TINYINT         NOT NULL DEFAULT 0,
-    deleted    TINYINT         NOT NULL DEFAULT 0,
+    pending    TINYINT(0)      NOT NULL DEFAULT 1,
+    deleted    TINYINT(0)      NOT NULL DEFAULT 0,
     created_at DATETIME                 DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME                 DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -124,6 +108,7 @@ CREATE TABLE comments_data
 CREATE TABLE reviews
 (
     id         BIGINT UNSIGNED NOT NULL,
+
     user_id    BIGINT UNSIGNED,
     book_id    BIGINT UNSIGNED,
 
@@ -131,7 +116,7 @@ CREATE TABLE reviews
     title      VARCHAR(128)    NOT NULL,
     content    TEXT,
 
-    deleted    TINYINT         NOT NULL DEFAULT 0,
+    deleted    TINYINT(0)      NOT NULL DEFAULT 0,
     created_at DATETIME                 DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME        NULL     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
 
@@ -146,13 +131,13 @@ CREATE TABLE user_book_listing
 (
     user_id        BIGINT UNSIGNED                         NOT NULL,
     book_id        BIGINT UNSIGNED                         NOT NULL,
-    reading_status ENUM ('pending', 'reading', 'complete') NULL DEFAULT NULL,
+    reading_status ENUM ('pending', 'reading', 'complete') NULL     DEFAULT NULL,
 
-    reviewed       TINYINT(1) UNSIGNED                          DEFAULT 0,
-    ignored        TINYINT(1) UNSIGNED                          DEFAULT 0,
-    like_status    ENUM ('liked', 'disliked')              NULL DEFAULT NULL,
+    reviewed       TINYINT(0)                              NOT NULL DEFAULT 0,
+    ignored        TINYINT(0)                              NOT NULL DEFAULT 0,
+    like_status    ENUM ('liked', 'disliked')              NULL     DEFAULT NULL,
 
-    current_page   INTEGER                                 NULL DEFAULT NULL,
+    current_page   INTEGER                                 NULL     DEFAULT NULL,
 
     PRIMARY KEY pk_ubl (user_id, book_id),
     INDEX idx_ubl_reverse (book_id, user_id),
@@ -232,112 +217,117 @@ CREATE TABLE comment_comment_link
 
 -- views
 CREATE DEFINER = 'bk_read_only'@'localhost' SQL SECURITY DEFINER VIEW clubs_user_listing AS
-SELECT c.id       AS club_id,
-       c.handle   AS club_handle,
-       u.id       AS user_id,
+SELECT c.handle   AS club_handle,
        u.username AS username
 FROM club_user_link AS l
          JOIN clubs c ON c.id = l.club_id
          JOIN users u ON l.user_id = u.id;
 
 CREATE DEFINER = 'bk_read_only'@'localhost' SQL SECURITY DEFINER VIEW clubs_popular AS
-SELECT c.id     AS club_id,
-       c.handle AS handle,
+SELECT c.handle AS handle,
        COUNT(*) AS member_count
 FROM club_user_link l
          JOIN clubs c ON c.id = l.club_id
 GROUP BY l.club_id
-ORDER BY member_count
+ORDER BY member_count DESC
 LIMIT 100;
 
 CREATE DEFINER = 'bk_read_only'@'localhost' SQL SECURITY DEFINER VIEW users_top_activity AS
-SELECT u.id                        AS user_id,
-       u.username                  AS username,
-       r.cnt * 1.75 + c.cnt * 0.75 AS activity_score
+SELECT u.username                                        AS username,
+       IFNULL(r.cnt, 0) * 1.75 + IFNULL(c.cnt, 0) * 0.75 AS activity_score
 FROM users AS u
-         JOIN (SELECT COUNT(id) AS cnt FROM reviews GROUP BY user_id) AS r
-         JOIN (SELECT COUNT(id) AS cnt FROM comments_data GROUP BY user_id) AS c
-GROUP BY u.id
-ORDER BY activity_score
+         LEFT JOIN (SELECT user_id AS id, COUNT(id) AS cnt
+                    FROM reviews
+                    GROUP BY user_id) AS r ON u.id = r.id
+         LEFT JOIN (SELECT user_id AS id, COUNT(id) AS cnt
+                    FROM comments_data
+                    WHERE pending = 0
+                    GROUP BY user_id) AS c ON u.id = c.id
+ORDER BY activity_score DESC
 LIMIT 100;
 
 CREATE DEFINER = 'bk_read_only'@'localhost' SQL SECURITY DEFINER VIEW books_top_activity AS
-SELECT b.id                                                                                    AS book_id,
-       b.handle                                                                                AS handle,
-       ROUND(brl.star * 2, 2)                                                                  AS rating,
-       ROUND(SQRT(brl.cnt) + cbl.cnt * 4 + ubl_complete.cnt + ubl_reading.cnt * 0.5 + dbl.cnt) AS activity_score
+SELECT b.handle                          AS handle,
+       ROUND(IFNULL(brl.star, 0) * 2, 2) AS rating,
+       ROUND(IFNULL(SQRT(brl.cnt), 0)
+           + IFNULL(cbl.cnt, 0) * 4
+           + IFNULL(ubl_complete.cnt, 0)
+           + IFNULL(ubl_reading.cnt, 0) * 0.5
+           + IFNULL(dbl.cnt, 0))         AS activity_score
 FROM books AS b
-         JOIN (SELECT book_id, COUNT(*) AS cnt, AVG(stars) AS star
-               FROM reviews
-               WHERE deleted = 0
-               GROUP BY book_id) AS brl
-              ON b.id = brl.book_id
-         JOIN (SELECT book_id, COUNT(*) AS cnt FROM club_book_link GROUP BY book_id) AS cbl ON b.id = cbl.book_id
-         JOIN (SELECT book_id, COUNT(*) AS cnt
-               FROM user_book_listing
-               WHERE reading_status = 'complete'
-                  OR reading_status = 'reviewed'
-               GROUP BY book_id) AS ubl_complete
-              ON b.id = ubl_complete.book_id
-         JOIN (SELECT book_id, COUNT(*) AS cnt
-               FROM user_book_listing
-               WHERE reading_status = 'reading'
-               GROUP BY book_id) AS ubl_reading
-              ON b.id = ubl_reading.book_id
-         JOIN (SELECT book_id, COUNT(*) AS cnt FROM discussion_book_link GROUP BY book_id) AS dbl ON b.id = dbl.book_id;
+         LEFT JOIN (SELECT book_id, COUNT(*) AS cnt, AVG(stars) AS star
+                    FROM reviews
+                    WHERE deleted = 0
+                    GROUP BY book_id) AS brl
+                   ON b.id = brl.book_id
+         LEFT JOIN (SELECT book_id, COUNT(*) AS cnt FROM club_book_link GROUP BY book_id) AS cbl ON b.id = cbl.book_id
+         LEFT JOIN (SELECT book_id, COUNT(*) AS cnt
+                    FROM user_book_listing
+                    WHERE reading_status = 'complete'
+                       OR reading_status = 'reviewed'
+                    GROUP BY book_id) AS ubl_complete
+                   ON b.id = ubl_complete.book_id
+         LEFT JOIN (SELECT book_id, COUNT(*) AS cnt
+                    FROM user_book_listing
+                    WHERE reading_status = 'reading'
+                    GROUP BY book_id) AS ubl_reading
+                   ON b.id = ubl_reading.book_id
+         LEFT JOIN (SELECT book_id, COUNT(*) AS cnt FROM discussion_book_link GROUP BY book_id) AS dbl
+                   ON b.id = dbl.book_id
+ORDER BY activity_score DESC
+LIMIT 100;
 
 CREATE DEFINER = 'bk_read_only'@'localhost' SQL SECURITY DEFINER VIEW books_top_rating AS
-SELECT b.id                       AS book_id,
-       b.handle                   AS handle,
+SELECT b.handle                   AS handle,
        ROUND(AVG(r.stars) * 2, 2) AS rating
-FROM books b
-         JOIN reviews r ON r.book_id = b.id
+FROM reviews r
+         JOIN books b ON r.book_id = b.id
 GROUP BY b.id
-ORDER BY rating
+ORDER BY rating DESC
 LIMIT 100;
 
 CREATE DEFINER = 'bk_read_only'@'localhost' SQL SECURITY DEFINER VIEW books_statistics AS
-SELECT b.id                       AS book_id,
-       b.handle                   AS handle,
-       ROUND(AVG(r.stars) * 2, 2) AS rating,
-       reader.cnt                 AS readers,
-       completed.cnt              AS completed,
-       wtr.cnt                    AS want_to_read,
-       liked.cnt                  AS liked,
-       disliked.cnt               AS disliked
+SELECT b.handle                 AS handle,
+       IFNULL(r.stars, 0)       AS rating,
+       IFNULL(reader.cnt, 0)    AS readers,
+       IFNULL(completed.cnt, 0) AS completed,
+       IFNULL(wtr.cnt, 0)       AS want_to_read,
+       IFNULL(liked.cnt, 0)     AS liked,
+       IFNULL(disliked.cnt, 0)  AS disliked
 FROM books b
-         JOIN reviews r ON r.book_id = r.id
-         JOIN (SELECT COUNT(*) AS cnt
-               FROM user_book_listing
-               WHERE reading_status = 'reading'
-               GROUP BY book_id) AS reader
-         JOIN (SELECT COUNT(*) AS cnt
-               FROM user_book_listing
-               WHERE reading_status = 'complete'
-               GROUP BY book_id) AS completed
-         JOIN (SELECT COUNT(*) AS cnt
-               FROM user_book_listing
-               WHERE reading_status = 'pending'
-               GROUP BY book_id) AS wtr
-         JOIN (SELECT COUNT(*) AS cnt
-               FROM user_book_listing
-               WHERE like_status = 'liked'
-               GROUP BY book_id) AS liked
-         JOIN (SELECT COUNT(*) AS cnt
-               FROM user_book_listing
-               WHERE like_status = 'disliked'
-               GROUP BY book_id) AS disliked
-GROUP BY b.id;
+         LEFT JOIN (SELECT book_id AS id, ROUND(AVG(r.stars) * 2, 2) AS stars
+                    FROM reviews r
+                    GROUP BY r.book_id) AS r ON b.id = r.id
+         LEFT JOIN (SELECT book_id AS id, COUNT(*) AS cnt
+                    FROM user_book_listing
+                    WHERE reading_status = 'reading'
+                    GROUP BY book_id) AS reader ON b.id = reader.id
+         LEFT JOIN (SELECT book_id AS id, COUNT(*) AS cnt
+                    FROM user_book_listing
+                    WHERE reading_status = 'complete'
+                    GROUP BY book_id) AS completed ON b.id = completed.id
+         LEFT JOIN (SELECT book_id AS id, COUNT(*) AS cnt
+                    FROM user_book_listing
+                    WHERE reading_status = 'pending'
+                    GROUP BY book_id) AS wtr ON b.id = wtr.id
+         LEFT JOIN (SELECT book_id AS id, COUNT(*) AS cnt
+                    FROM user_book_listing
+                    WHERE like_status = 'liked'
+                    GROUP BY book_id) AS liked ON b.id = liked.id
+         LEFT JOIN (SELECT book_id AS id, COUNT(*) AS cnt
+                    FROM user_book_listing
+                    WHERE like_status = 'disliked'
+                    GROUP BY book_id) AS disliked ON b.id = disliked.id
+ORDER BY b.handle;
 
--- Updatable views
-CREATE VIEW comments AS
-SELECT id,
-       user_id,
-       content,
-       deleted,
-       created_at,
-       updated_at
-FROM comments_data
+CREATE DEFINER = 'bk_read_only'@'localhost' SQL SECURITY DEFINER VIEW comments AS
+SELECT u.username,
+       cd.content,
+       cd.deleted,
+       cd.created_at,
+       cd.updated_at
+FROM comments_data cd
+         JOIN users u ON cd.user_id = u.id
 WHERE pending = 0;
 
 -- Trigger
@@ -349,39 +339,9 @@ CREATE TRIGGER trg_review_status
     FOR EACH ROW
 BEGIN
     UPDATE user_book_listing ubl
-    SET ubl.reviewed=1
+    SET ubl.reviewed = 1
     WHERE new.user_id = ubl.user_id
       AND new.book_id = ubl.book_id;
-END $$
-
-CREATE TRIGGER trg_comment_review_insert
-    BEFORE INSERT
-    ON comments_data
-    FOR EACH ROW
-BEGIN
-    IF EXISTS(SELECT 1
-              FROM moderated_discussion md
-              WHERE md.discussion_id =
-                    (SELECT dcl.discussion_id FROM discussion_comment_link dcl WHERE dcl.comment_id = new.id)) THEN
-        SET new.pending = 1;
-    ELSE
-        SET new.pending = 0;
-    END IF;
-END $$
-
-CREATE TRIGGER trg_comment_review_update
-    BEFORE UPDATE
-    ON comments_data
-    FOR EACH ROW
-BEGIN
-    IF EXISTS(SELECT 1
-              FROM moderated_discussion md
-              WHERE md.discussion_id =
-                    (SELECT dcl.discussion_id FROM discussion_comment_link dcl WHERE dcl.comment_id = new.id)) THEN
-        SET new.pending = 1;
-    ELSE
-        SET new.pending = 0;
-    END IF;
 END $$
 
 CREATE TRIGGER trg_ccl_parent_id
@@ -393,6 +353,10 @@ BEGIN
     THEN
         SIGNAL SQLSTATE '51000' SET MESSAGE_TEXT = 'a child cannot be a parent';
     END IF;
+    IF new.child_id = new.parent_id
+    THEN
+        SIGNAL SQLSTATE '51000' SET MESSAGE_TEXT = 'cannot comment on self';
+    END IF;
 END $$
 
 DELIMITER ;
@@ -400,9 +364,9 @@ DELIMITER ;
 -- Prototype
 CREATE TABLE friends_request
 (
-    from_id BIGINT UNSIGNED NOT NULL,
-    to_id   BIGINT UNSIGNED NOT NULL,
-    status  ENUM ('pending', 'confirmed', 'rejected'),
+    from_id BIGINT UNSIGNED                           NOT NULL,
+    to_id   BIGINT UNSIGNED                           NOT NULL,
+    status  ENUM ('pending', 'confirmed', 'rejected') NOT NULL DEFAULT 'pending',
     PRIMARY KEY pk_fr (to_id, from_id),
     UNIQUE INDEX idx_fr_reverse (from_id, to_id),
     CONSTRAINT FOREIGN KEY fk_fr_from_id (from_id) REFERENCES users (id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -419,9 +383,56 @@ CREATE TABLE friends
     CONSTRAINT FOREIGN KEY fk_friends_to_id (to_id) REFERENCES users (id) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
--- Grants
-GRANT DELETE ON book_club.moderated_discussion TO 'bk_api_user'@'%';
+DELIMITER $$
+CREATE TRIGGER trg_friend_request
+    AFTER UPDATE
+    ON friends_request
+    FOR EACH ROW
+BEGIN
+    IF new.status = 'confirmed' THEN
+        INSERT IGNORE INTO friends (from_id, to_id) VALUES (new.from_id, new.to_id);
+    END IF;
+END $$
+CREATE TRIGGER trg_friend_delete
+    AFTER DELETE
+    ON friends
+    FOR EACH ROW
+BEGIN
+    DELETE
+    FROM friends_request
+    WHERE ((from_id = old.from_id AND to_id = old.to_id)
+        OR (from_id = old.to_id AND to_id = old.from_id));
+END $$
+DELIMITER ;
 
+CREATE TABLE users_external
+(
+    user_id     BIGINT UNSIGNED NOT NULL,
+    external_id VARCHAR(128)    NOT NULL,
+
+    PRIMARY KEY pk_user_external (user_id),
+    UNIQUE INDEX idx_external_user_id (user_id),
+    CONSTRAINT FOREIGN KEY fk_external_user_id (user_id) REFERENCES users (id) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+CREATE TABLE user_icon
+(
+    user_id  BIGINT UNSIGNED NOT NULL,
+    icon_url TINYTEXT,
+
+    PRIMARY KEY pk_user_icon (user_id),
+    CONSTRAINT FOREIGN KEY fk_ui_user_id (user_id) REFERENCES users (id) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+CREATE TABLE user_password
+(
+    user_id       BIGINT UNSIGNED NOT NULL,
+    password_hash VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin,
+    PRIMARY KEY pk_user_password (user_id),
+    CONSTRAINT FOREIGN KEY fk_up_user_id (user_id) REFERENCES users (id) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+-- Grants
 GRANT SELECT ON book_club.* TO 'bk_api_user'@'%';
 GRANT INSERT ON book_club.* TO 'bk_api_user'@'%';
 
@@ -433,7 +444,7 @@ GRANT UPDATE ON book_club.reviews TO 'bk_api_user'@'%';
 GRANT UPDATE ON book_club.user_icon TO 'bk_api_user'@'%';
 GRANT UPDATE ON book_club.user_book_listing TO 'bk_api_user'@'%';
 
-GRANT UPDATE ON book_club.friends TO 'bk_api_user'@'%';
+GRANT DELETE ON book_club.friends TO 'bk_api_user'@'%';
 GRANT UPDATE ON book_club.friends_request TO 'bk_api_user'@'%';
 
 FLUSH PRIVILEGES;
