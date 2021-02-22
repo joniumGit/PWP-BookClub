@@ -1,0 +1,38 @@
+<configuration xmlns="http://www.jooq.org/xsd/jooq-codegen-3.14.0.xsd">
+    <jdbc>
+        <driver>org.mariadb.jdbc.Driver</driver>
+        <url>jdbc:mariadb://localhost:6969/book_club</url>
+        <user>root</user>
+        <password>test</password>
+        <autoCommit>false</autoCommit>
+    </jdbc>
+    <generator>
+        <!--
+             Available Options:
+             - org.jooq.codegen.JavaGenerator
+             - org.jooq.codegen.KotlinGenerator
+             - org.jooq.codegen.ScalaGenerator
+        -->
+        <name>org.jooq.codegen.KotlinGenerator</name>
+        <database>
+            <name>org.jooq.meta.mariadb.MariaDBDatabase</name>
+            <inputSchema>book_club</inputSchema>
+            <includes>.*</includes>
+            <excludes/>
+        </database>
+        <target>
+            <packageName>pwp.generated</packageName>
+            <directory>src/generated</directory>
+        </target>
+        <generate>
+            <pojos>true</pojos>
+            <daos>true</daos>
+<!--            <jpaAnnotations>true</jpaAnnotations>-->
+            <validationAnnotations>true</validationAnnotations>
+            <pojosAsKotlinDataClasses>true</pojosAsKotlinDataClasses>
+            <pojosEqualsAndHashCode>true</pojosEqualsAndHashCode>
+            <deprecated>false</deprecated>
+            <generatedAnnotation>true</generatedAnnotation>
+        </generate>
+    </generator>
+</configuration>

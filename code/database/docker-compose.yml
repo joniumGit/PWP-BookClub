@@ -1,0 +1,35 @@
+version: "3"
+services:
+  db:
+    image: mariadb:latest
+    container_name: pwp-db
+    restart: always
+    volumes:
+      - pwp-mariadb-data:/var/lib/mysql
+      - ./setup/:/docker-entrypoint-initdb.d/
+    ports:
+      - "127.0.0.1:6969:3306"
+    environment:
+      character-set-server: utf8mb4
+      collation-server: utf8mb4_unicode_ci
+      # (3) Using the secret
+      # MYSQL_ROOT_PASSWORD_FILE: /run/secrets/root_pass
+      MYSQL_ROOT_PASSWORD: test
+      TZ: Europe/Helsinki
+      # (2) Receiving the secret
+      # secrets:
+      #  - root_pass
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "127.0.0.1:8080:8080"
+
+# (1) Passing a secret into the containers
+#secrets:
+#  root_pass:
+#    file: ./setup/book-club-root.txt
+
+volumes:
+  pwp-mariadb-data:
