@@ -22,7 +22,7 @@
         </database>
         <target>
             <packageName>pwp.generated</packageName>
-            <directory>src/generated</directory>
+            <directory>src/kotlin/</directory>
         </target>
         <generate>
             <pojos>true</pojos>

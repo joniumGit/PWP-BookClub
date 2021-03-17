@@ -84,7 +84,7 @@ class TestCommentDiscussion : DBTest() {
     }
 
     @Test
-    @DisplayName("Link club and book")
+    @DisplayName("Link club and discussion")
     @Order(2)
     fun club() {
         assertDoesNotThrow {
@@ -110,7 +110,7 @@ class TestCommentDiscussion : DBTest() {
     }
 
     @Test
-    @DisplayName("Test views")
+    @DisplayName("Test comment view")
     @Order(4)
     fun vies(context: DSLContext) {
         assert(
