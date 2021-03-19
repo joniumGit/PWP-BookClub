@@ -11,7 +11,7 @@ import kotlin.reflect.jvm.jvmErasure
 
 
 @Tags(Tag("setup"), Tag("database"))
-class ASetup {
+class AAASetup {
 
     /**
      *  Just to see if everything is working

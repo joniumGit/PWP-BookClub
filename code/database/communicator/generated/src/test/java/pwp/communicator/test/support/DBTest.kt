@@ -1,20 +1,17 @@
-package pwp.communicator.test
+package pwp.communicator.test.support
 
 import DB
 import DBInject
 import log
 import org.jooq.DSLContext
-import org.jooq.impl.DAOImpl
 import org.junit.jupiter.api.*
 import pwp.communicator.Helpers
 import pwp.communicator.getDao
 import pwp.generated.tables.daos.*
-import pwp.generated.tables.pojos.*
-import randomHandle
-import randomId
+import pwp.generated.tables.pojos.ClubBookLink
+import pwp.generated.tables.pojos.ClubUserLink
 import java.sql.Connection
 import java.sql.Savepoint
-import kotlin.random.Random
 
 @Tag("database")
 @Disabled("Root class")
@@ -40,18 +37,6 @@ abstract class DBTest(
 
     }
 
-    private inline fun <P> DAOImpl<*, P, *>.insertPrint(
-        range: IntRange = (0..99),
-        block: (Int) -> P
-    ) {
-        val data = (range).map(block).map { it.log() }.toList()
-        this.insert(data)
-        assert(this.findAll().size == data.size) {
-            "Failed to assert that all inserted data was found"
-        }
-    }
-
-
     protected val userDao = getDao<UsersDao>()
     protected val bookDao = getDao<BooksDao>()
     protected val clubDao = getDao<ClubsDao>()
@@ -67,42 +52,21 @@ abstract class DBTest(
         savepoint = c.setSavepoint("db-test-begin")
         if (populateUsers) {
             println("Generating users:")
-            userDao.insertPrint {
-                val name = randomHandle().substring(0..8)
-                Users(
-                    id = randomId(),
-                    username = name,
-                    description = "Test"
-                )
-            }
+            addUsers(USER_COUNT)
             assert(userDao.findAll().size == USER_COUNT) {
                 "Failed user count"
             }
         }
         if (populateBooks) {
             println("\nGenerating Books:")
-            bookDao.insertPrint {
-                val name = randomHandle()
-                Books(
-                    id = randomId(),
-                    handle = name,
-                    fullName = name + randomHandle(),
-                    pages = Random.nextInt(10, 1000)
-                )
-            }
+            addBooks(BOOK_COUNT)
             assert(bookDao.findAll().size == BOOK_COUNT) {
                 "Failed book count"
             }
         }
         if (populateClubs) {
             println("\nGenerating Clubs:")
-            clubDao.insertPrint((0 until CLUB_COUNT)) {
-                val name = randomHandle()
-                Clubs(
-                    id = randomId(),
-                    handle = name
-                )
-            }
+            addClubs(CLUB_COUNT)
             assert(clubDao.findAll().size == CLUB_COUNT) {
                 "Failed club count"
             }

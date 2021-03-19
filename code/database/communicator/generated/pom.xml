@@ -3,13 +3,13 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>db-test-pom</artifactId>
-        <groupId>pwp</groupId>
-        <version>0.0.1</version>
+        <groupId>dev.jonium.pwp</groupId>
+        <artifactId>book-club-database-pom</artifactId>
+        <version>1.0.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>db-test-generated</artifactId>
+    <artifactId>book-club-communicator</artifactId>
 
     <build>
         <sourceDirectory>src/kotlin/</sourceDirectory>

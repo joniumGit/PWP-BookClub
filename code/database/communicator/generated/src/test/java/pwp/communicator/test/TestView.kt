@@ -4,16 +4,18 @@ import org.jooq.DSLContext
 import org.jooq.exception.DataAccessException
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import pwp.communicator.test.support.DBTest
 import pwp.generated.tables.records.ClubsUserListingRecord
-import pwp.generated.tables.records.CommentsRecord
 import java.sql.SQLException
 
 class TestView : DBTest(populateUsers = false, populateBooks = false, populateClubs = false) {
 
     /**
-     * Testing a couple views and if they work we assume they all work
+     * Testing a views and if it works we assume they all work
      *
      * Complex views can't be updated anyway
+     *
+     * Stat views are not used currently so no tests for them
      */
     @Test
     @DisplayName("Testing user listing")
@@ -23,16 +25,6 @@ class TestView : DBTest(populateUsers = false, populateBooks = false, populateCl
                 ClubsUserListingRecord(
                     clubHandle = "test",
                     username = "test"
-                )
-            )
-        } catch (e: DataAccessException) {
-            assert(e.getCause(SQLException::class.java).message!!.contains("lack rights"))
-        }
-        try {
-            context.executeInsert(
-                CommentsRecord(
-                    username = "test",
-                    content = "test"
                 )
             )
         } catch (e: DataAccessException) {

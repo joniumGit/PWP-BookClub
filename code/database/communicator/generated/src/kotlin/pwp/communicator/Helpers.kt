@@ -2,7 +2,6 @@
 
 package pwp.communicator
 
-import org.jooq.DAO
 import org.jooq.DSLContext
 import org.jooq.impl.DAOImpl
 import pwp.generated.tables.daos.*
@@ -40,7 +39,7 @@ object Helpers {
                 create<ClubsDao>(),
                 create<DiscussionsDao>(),
                 create<BooksDao>(),
-                create<CommentsDataDao>(),
+                create<CommentsDao>(),
                 create<ReviewsDao>(),
                 create<UserBookListingDao>(),
                 // Link
@@ -53,9 +52,6 @@ object Helpers {
                 // Proto
                 create<FriendsDao>(),
                 create<FriendsRequestDao>(),
-                create<UserIconDao>(),
-                create<UsersExternalDao>(),
-                create<UserPasswordDao>()
             )
         }
     }
@@ -86,16 +82,6 @@ inline fun <T : ResultSet> T.forEach(block: (T) -> Unit) {
         }
     }
 }
-
-/**
- * Inefficient method for a random entry
- */
-fun <T> DAO<*, T, *>.random(): T = this.findAll().random()
-
-/**
- * Inefficiently fetches a first value
- */
-fun <T> DAO<*, T, *>.first(): T = this.findAll().first()
 
 /**
  *  Runs stuff with savepoint

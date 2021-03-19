@@ -6,6 +6,7 @@ import org.jooq.DSLContext
 import org.jooq.exception.DataAccessException
 import org.junit.jupiter.api.*
 import pwp.communicator.getDao
+import pwp.communicator.test.support.DBTest
 import pwp.generated.BookClub
 import pwp.generated.tables.daos.*
 import pwp.generated.tables.pojos.*
@@ -18,7 +19,7 @@ import randomId
 class TestCommentDiscussion : DBTest() {
 
     private val discussionDao = getDao<DiscussionsDao>()
-    private val commentDao = getDao<CommentsDataDao>()
+    private val commentDao = getDao<CommentsDao>()
     private val cclDao = getDao<CommentCommentLinkDao>()
     private val dclDao = getDao<DiscussionCommentLinkDao>()
     private val user by lazy { userDao.findAll().random().log() }
@@ -41,14 +42,14 @@ class TestCommentDiscussion : DBTest() {
         )
     }
     private val comment by lazy {
-        CommentsData(
+        Comments(
             id = randomId(),
             userId = user.id,
             content = randomHandle()
         )
     }
     private val comment2 by lazy {
-        CommentsData(
+        Comments(
             id = randomId(),
             userId = userDao.findAll()[2].id,
             content = randomHandle()
@@ -110,21 +111,11 @@ class TestCommentDiscussion : DBTest() {
     }
 
     @Test
-    @DisplayName("Test comment view")
+    @DisplayName("Test comment pending")
     @Order(4)
     fun vies(context: DSLContext) {
-        assert(
-            context.selectFrom(BookClub.BOOK_CLUB.COMMENTS).count() == 0
-        ) {
-            "Pending status update failed to show in view"
-        }
         assertDoesNotThrow("Failed comment update") {
             commentDao.update(comment.copy(pending = 0.toByte()))
-        }
-        assert(
-            context.selectFrom(BookClub.BOOK_CLUB.COMMENTS).count() == 1
-        ) {
-            "Pending status update failed to show in view"
         }
     }
 

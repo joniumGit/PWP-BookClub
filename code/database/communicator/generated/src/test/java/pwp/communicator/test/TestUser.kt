@@ -1,19 +1,17 @@
 package pwp.communicator.test
 
 import org.jooq.DSLContext
-import org.jooq.exception.DataAccessException
-import org.jooq.types.ULong
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertDoesNotThrow
 import pwp.communicator.getDao
+import pwp.communicator.test.support.DBTest
 import pwp.generated.BookClub
 import pwp.generated.enums.FriendsRequestStatus
 import pwp.generated.tables.daos.FriendsDao
 import pwp.generated.tables.daos.FriendsRequestDao
-import pwp.generated.tables.daos.UserIconDao
-import pwp.generated.tables.daos.UsersExternalDao
 import pwp.generated.tables.pojos.FriendsRequest
-import pwp.generated.tables.pojos.UserIcon
-import pwp.generated.tables.pojos.UsersExternal
 
 @Tag("users")
 class TestUser : DBTest(populateClubs = false, populateBooks = false) {
@@ -23,43 +21,6 @@ class TestUser : DBTest(populateClubs = false, populateBooks = false) {
     fun userCount(context: DSLContext) {
         assert(context.selectFrom(BookClub.BOOK_CLUB.USERS).count() == USER_COUNT) {
             "Failed user count"
-        }
-    }
-
-    @Test
-    @DisplayName("Make user icon")
-    fun userIcon() {
-        assertThrows<DataAccessException> {
-            getDao<UserIconDao>().insert(UserIcon(userId = ULong.valueOf(0), iconUrl = "Test url"))
-        }
-        assertDoesNotThrow {
-            getDao<UserIconDao>().insert(
-                UserIcon(
-                    userId = userDao.findAll().random().id,
-                    iconUrl = "Test url"
-                )
-            )
-        }
-    }
-
-    @Test
-    @DisplayName("External Id")
-    fun externalId() {
-        assertThrows<DataAccessException> {
-            getDao<UsersExternalDao>().insert(
-                UsersExternal(
-                    userId = ULong.valueOf(0),
-                    externalId = "Test"
-                )
-            )
-        }
-        assertDoesNotThrow {
-            getDao<UsersExternalDao>().insert(
-                UsersExternal(
-                    userId = userDao.findAll().random().id,
-                    externalId = "Test"
-                )
-            )
         }
     }
 

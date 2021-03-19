@@ -4,14 +4,15 @@ import org.jooq.DSLContext
 import org.jooq.exception.DataAccessException
 import org.junit.jupiter.api.*
 import pwp.communicator.getDao
+import pwp.communicator.test.support.DBTest
 import pwp.generated.enums.UserBookListingReadingStatus
 import pwp.generated.tables.daos.ReviewsDao
 import pwp.generated.tables.daos.UserBookListingDao
 import pwp.generated.tables.pojos.Reviews
 import pwp.generated.tables.pojos.UserBookListing
+import pwp.generated.tables.references.BOOKS_RATING
 import pwp.generated.tables.references.BOOKS_STATISTICS
 import pwp.generated.tables.references.BOOKS_TOP_ACTIVITY
-import pwp.generated.tables.references.BOOKS_TOP_RATING
 import pwp.generated.tables.references.USER_BOOK_LISTING
 import randomId
 import java.math.BigDecimal
@@ -85,7 +86,7 @@ class TestReview : DBTest(populateClubs = false) {
             ).fetch().first()
             rating = first.rating!!
             handle = first.handle!!
-            context.selectFrom(BOOKS_TOP_RATING).limit(1).fetch().first().apply {
+            context.selectFrom(BOOKS_RATING).limit(1).fetch().first().apply {
                 assert(rating.intValueExact() == this.rating!!.intValueExact()) {
                     "Failed view integrity - Incorrect stars\nexpected: ${rating.toPlainString()}\nfound: ${this.rating!!.toPlainString()}"
                 }

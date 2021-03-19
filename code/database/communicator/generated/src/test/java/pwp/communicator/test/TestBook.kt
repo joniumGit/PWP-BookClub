@@ -4,7 +4,8 @@ import org.jooq.DSLContext
 import org.jooq.exception.DataAccessException
 import org.junit.jupiter.api.*
 import pwp.communicator.getDao
-import pwp.communicator.random
+import pwp.communicator.test.support.DBTest
+import pwp.communicator.test.support.random
 import pwp.communicator.using
 import pwp.generated.tables.daos.*
 import pwp.generated.tables.pojos.*
@@ -13,7 +14,10 @@ import randomHandle
 import randomId
 
 @Tag("books")
-class TestBook : DBTest(populateClubs = false, populateUsers = false) {
+class TestBook : DBTest(
+    populateClubs = false,
+    populateUsers = false
+) {
 
     private val defaultBook by lazy { bookDao.findAll().random() }
 
@@ -67,8 +71,10 @@ class TestBook : DBTest(populateClubs = false, populateUsers = false) {
     fun linksDisc() {
         using<DiscussionBookLinkDao> {
             val dDao = getDao<DiscussionsDao>()
-            val book = bookDao.random()
-            val book2 = bookDao.random()
+            val books = HashSet(bookDao.findAll())
+            val book = books.random()
+            books.remove(book)
+            val book2 = books.random()
             val disc1 = Discussions(
                 id = randomId(),
                 topic = randomHandle()
@@ -133,21 +139,24 @@ class TestBook : DBTest(populateClubs = false, populateUsers = false) {
                 }
             }
             val dupe = assertDoesNotThrow("Threw on a valid insert") {
-                val book = bookDao.random()
+                val books = HashSet(bookDao.findAll())
+                val book1 = books.random()
+                books.remove(book1)
+                val book2 = books.random()
                 this.insert(
                     ClubBookLink(
                         clubId = club.id,
-                        bookId = book.id
+                        bookId = book1.id
                     ),
                     ClubBookLink(
                         clubId = club.id,
-                        bookId = bookDao.random().id
+                        bookId = book2.id
                     )
                 )
                 assert(this.count() == 2L) {
                     "Count mismatch 1"
                 }
-                bookDao.delete(book)
+                bookDao.delete(book1)
                 assert(this.count() == 1L) {
                     "Count mismatch 2"
                 }
