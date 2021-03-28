@@ -78,35 +78,23 @@ CREATE TABLE books
     INDEX idx_books_deleted (deleted)
 ) ENGINE = InnoDB;
 
-CREATE TABLE discussions
-(
-    id         INTEGER  NOT NULL AUTO_INCREMENT,
-    owner_id   INTEGER  NULL,
-    topic      TEXT,
-
-    deleted    BOOLEAN  NOT NULL DEFAULT FALSE,
-    created_at DATETIME          DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NULL     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-
-    PRIMARY KEY pk_discussions (id),
-    INDEX idx_discussion_deleted (deleted),
-    CONSTRAINT FOREIGN KEY fg_discussion_owner (owner_id) REFERENCES users (id) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE = InnoDB;
-
 CREATE TABLE comments
 (
-    id         INTEGER NOT NULL AUTO_INCREMENT,
-    user_id    INTEGER NULL,
+    id         INTEGER         NOT NULL AUTO_INCREMENT,
+
+    uuid       BIGINT UNSIGNED NOT NULL DEFAULT UUID_SHORT(),
+    user_id    INTEGER         NULL,
     content    TEXT,
 
-    deleted    BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at DATETIME         DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME         DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted    BOOLEAN         NOT NULL DEFAULT FALSE,
+    created_at DATETIME                 DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME                 DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY pk_comments (id),
     INDEX idx_comments_user_id (user_id),
     INDEX idx_comments_deleted (deleted),
     INDEX idx_comments_updated (updated_at),
+    UNIQUE INDEX idx_comments_uuid (uuid),
     CONSTRAINT FOREIGN KEY fk_comments_user_id (user_id) REFERENCES users (id) ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE = InnoDB;
 
@@ -161,17 +149,6 @@ CREATE TABLE club_user_link
     CONSTRAINT FOREIGN KEY fk_cul_user_id (user_id) REFERENCES users (id) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
-CREATE TABLE club_discussion_link
-(
-    club_id       INTEGER NOT NULL,
-    discussion_id INTEGER NOT NULL,
-
-    PRIMARY KEY pk_cdl (club_id, discussion_id),
-    INDEX idx_cdl_reverse (discussion_id),
-    CONSTRAINT FOREIGN KEY fk_cdl_club (club_id) REFERENCES clubs (id) ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT FOREIGN KEY fk_cdl_disc (discussion_id) REFERENCES discussions (id) ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE = InnoDB;
-
 CREATE TABLE club_book_link
 (
     club_id INTEGER NOT NULL,
@@ -181,28 +158,6 @@ CREATE TABLE club_book_link
     INDEX idx_cbl_reverse (book_id),
     CONSTRAINT FOREIGN KEY fk_cbl_club_id (club_id) REFERENCES clubs (id) ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT FOREIGN KEY fk_cbl_book_id (book_id) REFERENCES books (id) ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE = InnoDB;
-
-CREATE TABLE discussion_book_link
-(
-    discussion_id INTEGER NOT NULL,
-    book_id       INTEGER NOT NULL,
-
-    PRIMARY KEY pk_dbl (discussion_id, book_id),
-    INDEX idx_dbl_reverse (book_id),
-    CONSTRAINT FOREIGN KEY fk_dbl_discussion_id (discussion_id) REFERENCES discussions (id) ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT FOREIGN KEY fk_dbl_book_id (book_id) REFERENCES books (id) ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE = InnoDB;
-
-CREATE TABLE discussion_comment_link
-(
-    discussion_id INTEGER NOT NULL,
-    comment_id    INTEGER NOT NULL,
-
-    PRIMARY KEY pk_dcl (comment_id),
-    INDEX pk_dcl_discussion (discussion_id),
-    CONSTRAINT FOREIGN KEY fk_dcl_discussion_id (discussion_id) REFERENCES discussions (id) ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT FOREIGN KEY fk_dcl_comment_id (comment_id) REFERENCES comments (id) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
 CREATE TABLE review_comment_link
