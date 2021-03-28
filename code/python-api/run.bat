@@ -1,2 +1,1 @@
-set FLASK_APP=book_club
-set FLASK_ENV=development
+uvicorn bookclub:api --reload

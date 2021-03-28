@@ -7,10 +7,9 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        "flask",
+        "fastapi",
         "pymysql",
-        "flask-restful",
-        "flask-sqlalchemy",
+        "pydantic",
         "SQLAlchemy",
         "jsonschema"
     ]

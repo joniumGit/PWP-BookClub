@@ -1,21 +1,24 @@
-from flask import Blueprint
-from flask_restful import Resource
+from typing import Optional
 
-entry_bp = Blueprint("api", __name__)
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 
-
-@entry_bp.route("/")
-def hello():
-    return "Hello"
+entry = APIRouter()
 
 
-class Entry(Resource):
+class HelloModel(BaseModel):
+    message: str
+    name: str
 
-    def get(self):
-        return {"hello": "world"}
+
+class HelloQuery(BaseModel):
+    message: Optional[str]
+    name: Optional[str]
 
 
-class CustomEntry(Resource):
-
-    def get(self, message: str):
-        return {"hello": message}
+@entry.get("/")
+async def hello_endpoint(query: HelloQuery = Depends()):
+    return HelloModel(
+        name=query.name or "none",
+        message=query.message or "none"
+    )

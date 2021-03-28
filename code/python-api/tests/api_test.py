@@ -1,30 +1,36 @@
 import pytest
-from flask import Response
-from flask.testing import FlaskClient
+from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
-from bookclub import create_app
+from bookclub import api, database
 
-
-@pytest.fixture
-def client() -> FlaskClient:
-    app = create_app()
-    with app.test_client() as client:
-        yield client
+client = TestClient(api)
 
 
-def test_root(client: FlaskClient):
-    r: Response = client.get("/")
-    assert r.get_data(as_text=True) == "Hello"
+@pytest.fixture()
+def db() -> Session:
+    yield from database()
 
 
-def test_hello(client: FlaskClient):
-    r: Response = client.get("/hello")
-    assert r.get_json()["hello"] == "world"
+def hello_test():
+    from bookclub.resources.entry import HelloModel
+    model: HelloModel = HelloModel(**client.get("/").json())
+    assert model.name == "none" and model.message == "none"
 
 
-def test_custom_hello(client: FlaskClient):
-    import random
-    import string
-    expected = ''.join(random.choices(string.ascii_letters + string.digits, k=100))
-    r: Response = client.get("/hello/" + expected)
-    assert r.get_json()["hello"] == expected
+def test_db(db: Session):
+    from bookclub.database.db_models import User
+    u1 = User(username="test")
+    u2 = User(username="test")
+    failed = False
+    try:
+        db.add(u1)
+        db.flush()
+        db.add(u2)
+        db.flush()
+    except IntegrityError:
+        failed = True
+    finally:
+        db.rollback()
+    assert failed
