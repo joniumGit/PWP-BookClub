@@ -27,7 +27,6 @@ class Books(db.Model):
     updated_at = db.Column(db.DateTime)
 
     clubs = db.relationship('Clubs', secondary='club_book_link', backref='bookss')
-    discussions = db.relationship('Discussions', secondary='discussion_book_link', backref='bookss')
 
 
 
@@ -55,17 +54,6 @@ class ClubBookLink(db.Model):
 
 
 
-class ClubDiscussionLink(db.Model):
-    __tablename__ = 'club_discussion_link'
-
-    club_id = db.Column(db.ForeignKey('clubs.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True, nullable=False)
-    discussion_id = db.Column(db.ForeignKey('discussions.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True, nullable=False, index=True)
-
-    club = db.relationship('Clubs', primaryjoin='ClubDiscussionLink.club_id == Clubs.id', backref='club_discussion_links')
-    discussion = db.relationship('Discussions', primaryjoin='ClubDiscussionLink.discussion_id == Discussions.id', backref='club_discussion_links')
-
-
-
 class ClubUserLink(db.Model):
     __tablename__ = 'club_user_link'
 
@@ -89,7 +77,6 @@ class Clubs(db.Model):
     updated_at = db.Column(db.DateTime)
 
     owner = db.relationship('Users', primaryjoin='Clubs.owner_id == Users.id', backref='users_clubss')
-    discussions = db.relationship('Discussions', secondary='club_discussion_link', backref='clubss')
     users = db.relationship('Users', secondary='club_user_link', backref='users_clubss_0')
 
 
@@ -98,6 +85,7 @@ class Comments(db.Model):
     __tablename__ = 'comments'
 
     id = db.Column(db.Integer, primary_key=True)
+    uuid = db.Column(db.BigInteger, nullable=False, unique=True, server_default=db.FetchedValue())
     user_id = db.Column(db.ForeignKey('users.id', ondelete='SET NULL', onupdate='CASCADE'), index=True)
     content = db.Column(db.Text(collation='utf8mb4_unicode_ci'))
     deleted = db.Column(db.Integer, nullable=False, index=True, server_default=db.FetchedValue())
@@ -105,42 +93,7 @@ class Comments(db.Model):
     updated_at = db.Column(db.DateTime, index=True, server_default=db.FetchedValue())
 
     user = db.relationship('Users', primaryjoin='Comments.user_id == Users.id', backref='commentss')
-    discussions = db.relationship('Discussions', secondary='discussion_comment_link', backref='commentss')
     reviews = db.relationship('Reviews', secondary='review_comment_link', backref='commentss')
-
-
-class DiscussionCommentLink(Comments):
-    __tablename__ = 'discussion_comment_link'
-
-    discussion_id = db.Column(db.ForeignKey('discussions.id', ondelete='CASCADE', onupdate='CASCADE'), index=True)
-    comment_id = db.Column(db.ForeignKey('comments.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True)
-
-    discussion = db.relationship('Discussions', primaryjoin='DiscussionCommentLink.discussion_id == Discussions.id', backref='discussion_comment_links')
-
-
-
-class DiscussionBookLink(db.Model):
-    __tablename__ = 'discussion_book_link'
-
-    discussion_id = db.Column(db.ForeignKey('discussions.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True, nullable=False)
-    book_id = db.Column(db.ForeignKey('books.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True, nullable=False, index=True)
-
-    book = db.relationship('Books', primaryjoin='DiscussionBookLink.book_id == Books.id', backref='discussion_book_links')
-    discussion = db.relationship('Discussions', primaryjoin='DiscussionBookLink.discussion_id == Discussions.id', backref='discussion_book_links')
-
-
-
-class Discussions(db.Model):
-    __tablename__ = 'discussions'
-
-    id = db.Column(db.Integer, primary_key=True)
-    owner_id = db.Column(db.ForeignKey('users.id', ondelete='SET NULL', onupdate='CASCADE'), index=True)
-    topic = db.Column(db.Text(collation='utf8mb4_unicode_ci'))
-    deleted = db.Column(db.Integer, nullable=False, index=True, server_default=db.FetchedValue())
-    created_at = db.Column(db.DateTime, server_default=db.FetchedValue())
-    updated_at = db.Column(db.DateTime)
-
-    owner = db.relationship('Users', primaryjoin='Discussions.owner_id == Users.id', backref='discussionss')
 
 
 
@@ -163,7 +116,7 @@ class Reviews(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.ForeignKey('users.id', ondelete='SET NULL', onupdate='CASCADE'))
-    book_id = db.Column(db.ForeignKey('books.id', ondelete='CASCADE', onupdate='CASCADE'), index=True)
+    book_id = db.Column(db.ForeignKey('books.id', ondelete='CASCADE', onupdate='CASCADE'), nullable=False, index=True)
     stars = db.Column(db.Integer, nullable=False, server_default=db.FetchedValue())
     title = db.Column(db.String(128, 'utf8mb4_unicode_ci'), nullable=False)
     content = db.Column(db.Text(collation='utf8mb4_unicode_ci'))
@@ -179,8 +132,8 @@ class Reviews(db.Model):
 class UserBooks(db.Model):
     __tablename__ = 'user_books'
     __table_args__ = (
-        db.Index('idx_ubl_reviewed', 'user_id', 'reviewed'),
-        db.Index('idx_ubl_reverse', 'book_id', 'user_id')
+        db.Index('idx_ubl_reverse', 'book_id', 'user_id'),
+        db.Index('idx_ubl_reviewed', 'user_id', 'reviewed')
     )
 
     user_id = db.Column(db.ForeignKey('users.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True, nullable=False)
