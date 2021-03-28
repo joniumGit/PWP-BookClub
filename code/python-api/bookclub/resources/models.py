@@ -6,6 +6,9 @@ class User(BaseModel):
     username: str
     description: Optional[str]
 
+    class Config:
+        orm_mode = True
+
 
 class Book(BaseModel):
     handle: str

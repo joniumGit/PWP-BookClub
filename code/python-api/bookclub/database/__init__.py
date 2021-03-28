@@ -1,8 +1,24 @@
+# FastAPI
+# noinspection PyUnresolvedReferences
+from fastapi import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
+# DB Error
+# noinspection PyUnresolvedReferences
+from sqlalchemy.exc import IntegrityError
+# SQLAlchemy
+# noinspection PyUnresolvedReferences
+from sqlalchemy.orm import sessionmaker, Session
 
-from .db_models import Book, Club, User, Comment, Review, UserBook, t_books_statistics
+from .db_models import (
+    Book as BDBook,
+    Club as DBClub,
+    User as DBUser,
+    Comment as DBComment,
+    Review as DBReview,
+    UserBook as DBUserBook,
+    t_books_statistics as book_stats
+)
 
 engine: Engine
 SessionLocal: sessionmaker

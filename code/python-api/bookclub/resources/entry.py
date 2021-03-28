@@ -1,7 +1,10 @@
-from typing import Optional
+from typing import Optional, List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
+from .models import User
+from ..database import *
 
 entry = APIRouter()
 
@@ -22,3 +25,19 @@ async def hello_endpoint(query: HelloQuery = Depends()):
         name=query.name or "none",
         message=query.message or "none"
     )
+
+
+@entry.put("/users")
+async def add_user(user: User, db: Session = Depends(database)):
+    try:
+        db.add(DBUser(username=user.username, description=user.description))
+        db.flush()
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(401, detail=e)
+
+
+@entry.get("/users", response_model=List[User])
+async def get_users(db: Session = Depends(database)):
+    return db.query(DBUser).all()
