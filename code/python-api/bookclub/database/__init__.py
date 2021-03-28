@@ -1,15 +1,13 @@
-# FastAPI
 # noinspection PyUnresolvedReferences
 from fastapi import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
-# DB Error
 # noinspection PyUnresolvedReferences
 from sqlalchemy.exc import IntegrityError
-# SQLAlchemy
 # noinspection PyUnresolvedReferences
 from sqlalchemy.orm import sessionmaker, Session
 
+# noinspection PyUnresolvedReferences
 from .db_models import (
     Book as BDBook,
     Club as DBClub,
@@ -19,6 +17,8 @@ from .db_models import (
     UserBook as DBUserBook,
     t_books_statistics as book_stats
 )
+# noinspection PyUnresolvedReferences
+from . import utils as crud
 
 engine: Engine
 SessionLocal: sessionmaker
