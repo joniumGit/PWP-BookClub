@@ -1,6 +1,6 @@
 # THIS FILE IS GENERATED
 #
-# flask-sqlacodegen mysql+pymysql://root:test@localhost:6969/book_club --flask --outfile dbmodels.py --noinflect --notables
+# flask-sqlacodegen mysql+pymysql://root:test@localhost:6969/book_club --flask --outfile dbmodels.py --noinflect --notables --noviews
 #
 # ONLY THIS HEADER HAS BEEN ADDED ON 19.3.2021
 #
@@ -27,19 +27,6 @@ class Books(db.Model):
     updated_at = db.Column(db.DateTime)
 
     clubs = db.relationship('Clubs', secondary='club_book_link', backref='bookss')
-
-
-
-class BooksStatistics(db.Model):
-    __tablename__ = 'books_statistics'
-
-    handle = db.Column(db.String(64))
-    rating = db.Column(db.Numeric(7, 2), server_default=db.FetchedValue())
-    readers = db.Column(db.BigInteger, server_default=db.FetchedValue())
-    completed = db.Column(db.BigInteger, server_default=db.FetchedValue())
-    pending = db.Column(db.BigInteger, server_default=db.FetchedValue())
-    liked = db.Column(db.BigInteger, server_default=db.FetchedValue())
-    disliked = db.Column(db.BigInteger, server_default=db.FetchedValue())
 
 
 
