@@ -15,16 +15,3 @@ def client() -> FlaskClient:
 def test_root(client: FlaskClient):
     r: Response = client.get("/")
     assert r.get_data(as_text=True) == "Hello"
-
-
-def test_hello(client: FlaskClient):
-    r: Response = client.get("/hello")
-    assert r.get_json()["hello"] == "world"
-
-
-def test_custom_hello(client: FlaskClient):
-    import random
-    import string
-    expected = ''.join(random.choices(string.ascii_letters + string.digits, k=100))
-    r: Response = client.get("/hello/" + expected)
-    assert r.get_json()["hello"] == expected
