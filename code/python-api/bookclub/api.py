@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as LowHTTPException
 
 from .database import *
 from .resources.entry import entry
@@ -23,6 +24,25 @@ def exception_handler(_: Request, exc: HTTPException):
             "@error": {
                 "@message": exc.detail or "An exception occurred",
                 "@httpStatusCode": exc.status_code
+            }
+        },
+    )
+
+
+@api.exception_handler(LowHTTPException)
+def low_http_exception(r: Request, exc: LowHTTPException):
+    return JSONResponse(
+        media_type=MASON,
+        status_code=exc.status_code,
+        content={
+            "@error": {
+                "@message": exc.detail or "An exception occurred",
+                "@httpStatusCode": exc.status_code,
+                "@controls": {
+                    "index": {
+                        "href": str(r.base_url)
+                    }
+                }
             }
         },
     )
