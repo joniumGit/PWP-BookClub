@@ -21,17 +21,17 @@
             <excludes/>
         </database>
         <target>
-            <packageName>pwp.generated</packageName>
-            <directory>src/kotlin/</directory>
+            <packageName>pwp.database.generated</packageName>
+            <directory>test/</directory>
         </target>
         <generate>
             <pojos>true</pojos>
             <daos>true</daos>
-<!--            <jpaAnnotations>true</jpaAnnotations>-->
-            <validationAnnotations>true</validationAnnotations>
-            <pojosAsKotlinDataClasses>true</pojosAsKotlinDataClasses>
-            <pojosEqualsAndHashCode>true</pojosEqualsAndHashCode>
             <deprecated>false</deprecated>
+            <jpaAnnotations>false</jpaAnnotations>
+            <validationAnnotations>true</validationAnnotations>
+            <pojosAsKotlinDataClasses>false</pojosAsKotlinDataClasses>
+            <pojosEqualsAndHashCode>true</pojosEqualsAndHashCode>
             <generatedAnnotation>true</generatedAnnotation>
         </generate>
     </generator>

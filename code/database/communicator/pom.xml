@@ -5,16 +5,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>dev.jonium.pwp</groupId>
-    <artifactId>book-club-database-pom</artifactId>
+    <artifactId>book-club-database-tests</artifactId>
     <packaging>pom</packaging>
     <version>1.0.0</version>
-    <modules>
-        <module>generated</module>
-    </modules>
 
     <properties>
         <java.version>11</java.version>
-        <kotlin.version>1.5.0-M1</kotlin.version>
+        <kotlin.version>1.4.31</kotlin.version>
         <jooq.version>3.14.7</jooq.version>
         <mariadb.version>2.7.2</mariadb.version>
 
@@ -61,6 +58,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-reflect</artifactId>
+            <version>${kotlin.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <version>5.7.1</version>
@@ -69,7 +72,54 @@
     </dependencies>
 
     <build>
+        <testSourceDirectory>test/</testSourceDirectory>
         <plugins>
+            <plugin>
+                <groupId>org.jooq</groupId>
+                <artifactId>jooq-codegen-maven</artifactId>
+                <version>${jooq.version}</version>
+                <executions>
+                    <execution>
+                        <id>jooq-codegen</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <configurationFile>${project.basedir}/jooq-config.xml</configurationFile>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M5</version>
+            </plugin>
+            <plugin>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>auto-clean</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>test/pwp/database/generated</directory>
+                            <includes>
+                                <include>**/**</include>
+                                <include>**/*.*</include>
+                            </includes>
+                            <followSymlinks>false</followSymlinks>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
@@ -77,22 +127,12 @@
                 <executions>
                     <execution>
                         <id>compile</id>
-                        <phase>process-sources</phase>
+                        <phase>compile</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>
                     </execution>
-                    <execution>
-                        <id>test-compile</id>
-                        <phase>test-compile</phase>
-                        <goals>
-                            <goal>test-compile</goal>
-                        </goals>
-                    </execution>
                 </executions>
-                <configuration>
-                    <jvmTarget>${java.version}</jvmTarget>
-                </configuration>
             </plugin>
         </plugins>
     </build>
