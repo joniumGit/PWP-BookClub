@@ -29,7 +29,7 @@ FLUSH PRIVILEGES;
 -- Entity tables
 CREATE TABLE users
 (
-    id            INTEGER,
+    id            INTEGER      NOT NULL AUTO_INCREMENT,
     username      VARCHAR(64)  NOT NULL,
     password_hash VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin,
     description   VARCHAR(256) NULL     DEFAULT NULL,
@@ -45,8 +45,8 @@ CREATE TABLE users
 
 CREATE TABLE clubs
 (
-    id          INTEGER,
-    owner_id    INTEGER,
+    id          INTEGER       NOT NULL AUTO_INCREMENT,
+    owner_id    INTEGER       NULL,
     handle      VARCHAR(64)   NOT NULL,
     description VARCHAR(2048) NULL     DEFAULT NULL,
 
@@ -62,7 +62,7 @@ CREATE TABLE clubs
 
 CREATE TABLE books
 (
-    id          INTEGER,
+    id          INTEGER      NOT NULL AUTO_INCREMENT,
     handle      VARCHAR(64)  NOT NULL,
     full_name   VARCHAR(256) NOT NULL,
     description TEXT,
@@ -80,8 +80,8 @@ CREATE TABLE books
 
 CREATE TABLE discussions
 (
-    id         INTEGER,
-    owner_id   INTEGER,
+    id         INTEGER  NOT NULL AUTO_INCREMENT,
+    owner_id   INTEGER  NULL,
     topic      TEXT,
 
     deleted    BOOLEAN  NOT NULL DEFAULT FALSE,
@@ -95,8 +95,8 @@ CREATE TABLE discussions
 
 CREATE TABLE comments
 (
-    id         INTEGER,
-    user_id    INTEGER,
+    id         INTEGER NOT NULL AUTO_INCREMENT,
+    user_id    INTEGER NULL,
     content    TEXT,
 
     deleted    BOOLEAN NOT NULL DEFAULT FALSE,
@@ -112,9 +112,9 @@ CREATE TABLE comments
 
 CREATE TABLE reviews
 (
-    id         INTEGER,
-    user_id    INTEGER,
-    book_id    INTEGER,
+    id         INTEGER      NOT NULL AUTO_INCREMENT,
+    user_id    INTEGER      NULL,
+    book_id    INTEGER      NOT NULL,
     stars      TINYINT      NOT NULL DEFAULT 3,
     title      VARCHAR(128) NOT NULL,
     content    TEXT,
@@ -152,8 +152,8 @@ CREATE TABLE user_books
 -- Link tables
 CREATE TABLE club_user_link
 (
-    club_id INTEGER,
-    user_id INTEGER,
+    club_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
 
     PRIMARY KEY pk_cul (club_id, user_id),
     INDEX idx_cul_user_id (user_id),
@@ -163,8 +163,8 @@ CREATE TABLE club_user_link
 
 CREATE TABLE club_discussion_link
 (
-    club_id       INTEGER,
-    discussion_id INTEGER,
+    club_id       INTEGER NOT NULL,
+    discussion_id INTEGER NOT NULL,
 
     PRIMARY KEY pk_cdl (club_id, discussion_id),
     INDEX idx_cdl_reverse (discussion_id),
@@ -174,8 +174,8 @@ CREATE TABLE club_discussion_link
 
 CREATE TABLE club_book_link
 (
-    club_id INTEGER,
-    book_id INTEGER,
+    club_id INTEGER NOT NULL,
+    book_id INTEGER NOT NULL,
 
     PRIMARY KEY pk_cbl (club_id, book_id),
     INDEX idx_cbl_reverse (book_id),
@@ -185,8 +185,8 @@ CREATE TABLE club_book_link
 
 CREATE TABLE discussion_book_link
 (
-    discussion_id INTEGER,
-    book_id       INTEGER,
+    discussion_id INTEGER NOT NULL,
+    book_id       INTEGER NOT NULL,
 
     PRIMARY KEY pk_dbl (discussion_id, book_id),
     INDEX idx_dbl_reverse (book_id),
@@ -196,8 +196,8 @@ CREATE TABLE discussion_book_link
 
 CREATE TABLE discussion_comment_link
 (
-    discussion_id INTEGER,
-    comment_id    INTEGER,
+    discussion_id INTEGER NOT NULL,
+    comment_id    INTEGER NOT NULL,
 
     PRIMARY KEY pk_dcl (comment_id),
     INDEX pk_dcl_discussion (discussion_id),
@@ -207,8 +207,8 @@ CREATE TABLE discussion_comment_link
 
 CREATE TABLE review_comment_link
 (
-    review_id  INTEGER,
-    comment_id INTEGER,
+    review_id  INTEGER NOT NULL,
+    comment_id INTEGER NOT NULL,
 
     PRIMARY KEY pk_ccl (review_id, comment_id),
     CONSTRAINT FOREIGN KEY fk_ccl_parent_id (review_id) REFERENCES reviews (id) ON UPDATE CASCADE ON DELETE CASCADE,

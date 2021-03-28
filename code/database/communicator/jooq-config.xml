@@ -25,8 +25,8 @@
             <directory>test/</directory>
         </target>
         <generate>
-            <pojos>true</pojos>
-            <daos>true</daos>
+            <pojos>false</pojos>
+            <daos>false</daos>
             <deprecated>false</deprecated>
             <jpaAnnotations>false</jpaAnnotations>
             <validationAnnotations>true</validationAnnotations>
