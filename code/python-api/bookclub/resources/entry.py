@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response, Request
 from pydantic import BaseModel
 
 from .models import User
@@ -27,15 +27,16 @@ async def hello_endpoint(query: HelloQuery = Depends()):
     )
 
 
-@entry.put("/users")
-async def add_user(user: User, db: Session = Depends(database)):
+@entry.put("/users", status_code=204)
+async def add_user(user: User, request: Request, response: Response, db: Session = Depends(database)):
     try:
         db.add(DBUser(username=user.username, description=user.description))
         db.flush()
         db.commit()
     except IntegrityError as e:
         db.rollback()
-        raise HTTPException(401, detail=e)
+        raise HTTPException(409, detail="Already exists")
+    response.headers["Location"] = request.url_for("get_users")
 
 
 @entry.get("/users", response_model=List[User])

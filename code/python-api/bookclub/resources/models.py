@@ -2,6 +2,11 @@ from pydantic import BaseModel
 from typing import Optional
 
 
+class MasonBase(BaseModel):
+    # TODO Implementing mason support for models
+    pass
+
+
 class User(BaseModel):
     username: str
     description: Optional[str]
