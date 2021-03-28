@@ -94,7 +94,7 @@ components:
         - user
         - book
         - stars
-        - title
+
       properties:
         user:
           type: string
