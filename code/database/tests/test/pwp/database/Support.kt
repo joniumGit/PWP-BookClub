@@ -1,4 +1,4 @@
-package pwp.database.support
+package pwp.database
 
 
 /**
@@ -11,8 +11,6 @@ package pwp.database.support
 import org.jooq.DSLContext
 import org.junit.jupiter.api.extension.*
 import org.junit.jupiter.api.extension.support.TypeBasedParameterResolver
-import pwp.database.DB
-import pwp.database.log
 import java.lang.annotation.Inherited
 import java.lang.reflect.Method
 import java.sql.Connection

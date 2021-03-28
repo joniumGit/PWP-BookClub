@@ -10,7 +10,6 @@ import pwp.database.generated.tables.records.UsersRecord
 import pwp.database.generated.tables.references.CLUBS
 import pwp.database.generated.tables.references.CLUB_USER_LINK
 import pwp.database.generated.tables.references.USERS
-import pwp.database.support.DBInject
 import kotlin.test.assertEquals
 
 inline fun <T : UpdatableRecord<*>> add(
@@ -53,7 +52,6 @@ class ClubsTests {
     @Test
     fun club(ctx: DSLContext) {
         val club = clubs.random()
-        club.attach(ctx.configuration())
         add(users.indices) {
             val record = this.newRecord(CLUB_USER_LINK)
             record.userId = users[it].id

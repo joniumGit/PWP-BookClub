@@ -29,7 +29,7 @@
             <daos>false</daos>
             <deprecated>false</deprecated>
             <jpaAnnotations>false</jpaAnnotations>
-            <validationAnnotations>true</validationAnnotations>
+            <validationAnnotations>false</validationAnnotations>
             <pojosAsKotlinDataClasses>false</pojosAsKotlinDataClasses>
             <pojosEqualsAndHashCode>true</pojosEqualsAndHashCode>
             <generatedAnnotation>true</generatedAnnotation>
