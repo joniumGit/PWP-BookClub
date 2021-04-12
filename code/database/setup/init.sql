@@ -114,6 +114,7 @@ CREATE TABLE reviews
     PRIMARY KEY pk_reviews (id),
     UNIQUE INDEX reviews_user_id (user_id, book_id),
     INDEX reviews_book_id (book_id),
+    CONSTRAINT chk_stars CHECK (stars <= 5 AND stars >= 1),
     CONSTRAINT FOREIGN KEY fk_reviews_user_id (user_id) REFERENCES users (id) ON UPDATE CASCADE ON DELETE SET NULL,
     CONSTRAINT FOREIGN KEY fk_reviews_book_id (book_id) REFERENCES books (id) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = InnoDB;
@@ -173,7 +174,7 @@ CREATE TABLE review_comment_link
 -- views
 CREATE DEFINER = 'bk_read_only'@'localhost' SQL SECURITY DEFINER VIEW books_statistics AS
 SELECT b.handle                 AS handle,
-       IFNULL(r.stars, 0)       AS rating,
+       IFNULL(r.stars, 1)       AS rating,
        IFNULL(reader.cnt, 0)    AS readers,
        IFNULL(completed.cnt, 0) AS completed,
        IFNULL(wtr.cnt, 0)       AS pending,

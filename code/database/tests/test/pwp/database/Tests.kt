@@ -216,6 +216,36 @@ class Reviews {
     }
 
     @Test
+    @DisplayName("Star limits")
+    fun stars(ctx: DSLContext) {
+        val review = ctx.add(REVIEWS) {
+            userId = user.id
+            bookId = book.id
+            title = handle()
+            content = handle()
+        }
+        review.stars = 0
+        assertThrows<DataAccessException>(INVALID) {
+            review.update()
+        }
+        review.refresh()
+        review.stars = 6
+        assertThrows<DataAccessException>(INVALID) {
+            review.update()
+        }
+        review.refresh()
+        review.stars = 1
+        assertDoesNotThrow(FAILED_VALID) {
+            review.update()
+        }
+        review.refresh()
+        review.stars = 5
+        assertDoesNotThrow(FAILED_VALID) {
+            review.update()
+        }
+    }
+
+    @Test
     @DisplayName("FG user")
     fun user(ctx: DSLContext) {
         val review = ctx.add(REVIEWS) {
