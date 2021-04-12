@@ -27,7 +27,10 @@ object DB {
      *  Instance of [DSLContext] used across all test
      */
     val context: DSLContext by lazy {
-        DSL.using(rawConnection, SQLDialect.MARIADB)
+        DSL.using(
+            rawConnection,
+            SQLDialect.MARIADB
+        )
     }
 
     fun test() {

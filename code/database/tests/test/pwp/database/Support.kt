@@ -11,6 +11,7 @@ package pwp.database
 import org.jooq.DSLContext
 import org.junit.jupiter.api.extension.*
 import org.junit.jupiter.api.extension.support.TypeBasedParameterResolver
+import org.junit.platform.commons.util.AnnotationUtils
 import java.lang.annotation.Inherited
 import java.lang.reflect.Method
 import java.sql.Connection
@@ -22,13 +23,31 @@ import kotlin.system.measureTimeMillis
  * and marks classes/methods for [invocation interception][DBInterceptor]
  */
 @Inherited
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
-@ExtendWith(DSLProvider::class, RawProvider::class, DBInterceptor::class)
+@Target(AnnotationTarget.CLASS)
+@ExtendWith(
+    DSLProvider::class,
+    RawProvider::class,
+    DBInterceptor::class,
+    DBFinalizer::class
+)
 annotation class DBInject
 
+/**
+ * Prevents rollback after invocation
+ */
 @Inherited
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 annotation class Persist
+
+class DBFinalizer : TestInstancePostProcessor {
+
+    /**
+     *  Rollback database after tests in a container
+     */
+    override fun postProcessTestInstance(instance: Any, context: ExtensionContext) {
+        DB.rawConnection.rollback()
+    }
+}
 
 /**
  *  Intercepts calls for [DBInject] annotated classes/methods
@@ -43,22 +62,25 @@ class DBInterceptor : InvocationInterceptor {
         invocationContext: ReflectiveInvocationContext<Method>,
         extensionContext: ExtensionContext
     ) {
-        val timed = measureTimeMillis {
-            log("Setting savepoint for: ${invocationContext.executable.name}...")
-            if (
-                invocationContext.executable.isAnnotationPresent(Persist::class.java)
-                || invocationContext.targetClass.isAnnotationPresent(Persist::class.java)
-            ) {
-                log("Persisting...")
+        val timed: Long
+        if (
+            AnnotationUtils.isAnnotated(invocationContext.executable, Persist::class.java)
+            || AnnotationUtils.isAnnotated(invocationContext.targetClass, Persist::class.java)
+        ) {
+            log("Persisting...")
+            timed = measureTimeMillis {
                 invocation.proceed()
-            } else {
-                val save = DB.rawConnection.setSavepoint("current-method")
-                try {
+            }
+        } else {
+            log("Setting savepoint for: ${invocationContext.executable.name}...")
+            val save = DB.rawConnection.setSavepoint()
+            try {
+                timed = measureTimeMillis {
                     invocation.proceed()
-                } finally {
-                    log("Restoring savepoint...")
-                    DB.rawConnection.rollback(save)
                 }
+            } finally {
+                log("Restoring savepoint...")
+                DB.rawConnection.rollback(save)
             }
         }
         if (timed > 500) {

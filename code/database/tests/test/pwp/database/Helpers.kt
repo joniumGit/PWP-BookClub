@@ -1,7 +1,11 @@
 package pwp.database
 
 import org.jooq.DSLContext
+import org.jooq.Table
+import org.jooq.UpdatableRecord
 import java.security.SecureRandom
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 /**
  *  For verbose test output, i.e. everything gets spammed into std.out
@@ -9,6 +13,11 @@ import java.security.SecureRandom
 private val verbose: Boolean by lazy {
     System.getProperty("verbose")?.let { true } ?: false
 }
+
+const val FAILED_VALID = "Failed to insert a valid entry"
+const val DUPLICATE = "Allowed to insert a duplicate entry"
+const val INVALID = "Allowed to insert an invalid entry"
+const val FOUND_DELETED = "Found a non-existent record"
 
 /**
  *  Prints
@@ -63,4 +72,32 @@ fun <T> DSLContext.safe(block: DSLContext.() -> T): T {
     } else {
         return result!!
     }
+}
+
+/**
+ *  Helper for batches
+ */
+inline fun <T : UpdatableRecord<*>> add(
+    range: IntRange,
+    crossinline block: DSLContext.(Int) -> T
+) = DB.context.safe {
+    range.map { block(it) }
+        .toList()
+        .let {
+            batchInsert(it).execute()
+        }
+}
+
+/**
+ *  Helper for inserts
+ */
+inline fun <T : UpdatableRecord<*>> DSLContext.add(table: Table<T>, block: T.() -> Unit): T {
+    return this.newRecord(table)
+        .apply(block = block)
+        .let {
+            assertNull(it.get("id"))
+            it.insert()
+            assertNotNull(it.get("id"))
+            it.log()
+        }
 }
