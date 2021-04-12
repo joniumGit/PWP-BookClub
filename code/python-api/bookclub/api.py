@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as LowHTTPException
@@ -8,7 +10,12 @@ from .resources.entry import entry
 MASON = 'application/vnd.mason+json'
 
 DATABASE_URL = "mysql+pymysql://root:test@localhost:6969/book_club"
-init(DATABASE_URL)
+
+if os.getenv("book_club_db_url"):
+    DATABASE_URL = os.getenv("book_club_db_url")
+    init(DATABASE_URL, False)
+else:
+    init(DATABASE_URL, True)
 
 api = FastAPI()
 

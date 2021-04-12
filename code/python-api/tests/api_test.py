@@ -8,9 +8,14 @@ from bookclub import api, database
 client = TestClient(api)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def db() -> Session:
-    yield from database()
+    for db in database():
+        db.begin_nested()
+        try:
+            yield db
+        finally:
+            db.rollback()
 
 
 def hello_test():
@@ -23,14 +28,9 @@ def test_db(db: Session):
     from bookclub.database.db_models import User
     u1 = User(username="test")
     u2 = User(username="test")
-    failed = False
-    try:
-        db.add(u1)
-        db.flush()
-        db.add(u2)
-        db.flush()
-    except IntegrityError:
-        failed = True
-    finally:
-        db.rollback()
-    assert failed
+    db.add(u1)
+    db.flush()
+    with pytest.raises(IntegrityError):
+        with db.begin_nested():
+            db.add(u2)
+            db.flush()
