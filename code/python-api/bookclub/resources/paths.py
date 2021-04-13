@@ -1,10 +1,10 @@
-from typing import Optional, List
+from typing import Optional
 
-from fastapi import APIRouter, Response, Request
+from fastapi import APIRouter, Response, Request, Depends
 from pydantic import BaseModel
 
-from .models import User
-from ..database import *
+from ..data import da, Session, database
+from ..data.model import dbm, ext
 
 entry = APIRouter()
 
@@ -28,16 +28,21 @@ async def hello_endpoint(query: HelloQuery = Depends()):
 
 
 @entry.put("/users", status_code=204)
-async def add_user(user: User, request: Request, response: Response, db: Session = Depends(database)):
-    await crud.create_user(db, user)
+async def add_user(
+        user: ext.User,
+        request: Request,
+        response: Response,
+        db: Session = Depends(database)
+):
+    da.create_user(user, db)
     response.headers["Location"] = request.url_for("get_user", user=user.username)
 
 
-@entry.get("/users", response_model=List[User])
+@entry.get("/users")
 async def get_users(db: Session = Depends(database)):
-    return db.query(DBUser).all()
+    return {'items': [ext.User.from_orm(x) for x in db.query(dbm.User).all()]}
 
 
-@entry.get("/users/{user}", response_model=User)
+@entry.get("/users/{user}", response_model=ext.User)
 async def get_user(user: str, db: Session = Depends(database)):
-    return await crud.get_user(db, user)
+    return da.get_user(user, db)

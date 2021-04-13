@@ -12,7 +12,8 @@ setup(
         "pymysql",
         "pydantic",
         "SQLAlchemy",
-        "jsonschema"
+        "jsonschema",
+        "uvicorn"
     ],
     extras_require={
         "dev": ["pytest", "requests"]

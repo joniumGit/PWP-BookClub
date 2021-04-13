@@ -1,26 +1,13 @@
 from typing import Generator
 
-# noinspection PyUnresolvedReferences
 from fastapi import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
-# noinspection PyUnresolvedReferences
 from sqlalchemy.exc import IntegrityError
-# noinspection PyUnresolvedReferences
 from sqlalchemy.orm import sessionmaker, Session
 
-# noinspection PyUnresolvedReferences
-from . import utils as crud
-# noinspection PyUnresolvedReferences
-from .db_models import (
-    Book as BDBook,
-    Club as DBClub,
-    User as DBUser,
-    Comment as DBComment,
-    Review as DBReview,
-    UserBook as DBUserBook,
-    t_books_statistics as book_stats
-)
+from . import data_access as da
+from . import model
 
 engine: Engine
 SessionLocal: sessionmaker
@@ -60,3 +47,6 @@ def init(url: str, test: bool = True):
                 db.close()
 
         database.__code__ = __database.__code__
+
+
+__all__ = ['init', 'database', 'da', 'Depends', 'Session', 'Generator', 'IntegrityError', 'model']

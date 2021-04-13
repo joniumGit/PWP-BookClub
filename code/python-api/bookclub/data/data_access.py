@@ -11,8 +11,8 @@ from sqlalchemy.engine import Connection, Row
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session, DeclarativeMeta
 
-from . import db_models as internal
-from ..resources import models as external
+from .model import data_models as external
+from .model import db_models as internal
 from ..utils import *
 
 T = TypeVar('T', bound=DeclarativeMeta)
@@ -689,3 +689,29 @@ def modify_user_book_ignore_status(
             r.ignored = ignored
         except NoResultFound:
             raise NotFound(f"User {u.username} has no record for {b.handle}")
+
+
+__all__ = [
+    'get_club',
+    'get_user',
+    'get_book',
+    'get_comment',
+    'get_review',
+    'delete_club',
+    'delete_user',
+    'delete_book',
+    'delete_review',
+    'delete_comment',
+    'update_club',
+    'update_user',
+    'update_review',
+    'update_book',
+    'update_comment',
+    'create_club',
+    'create_user',
+    'create_book',
+    'create_review',
+    'create_comment',
+    'modify_user_book_ignore_status',
+    'store_user_book'
+]

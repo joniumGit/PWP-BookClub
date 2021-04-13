@@ -6,14 +6,23 @@ from sqlalchemy.orm import Session
 
 # noinspection PyUnresolvedReferences
 from api_test import db
-from bookclub.database import data_access as internal
-from bookclub.resources import models as external
+from bookclub.data import da as internal
+from bookclub.data.model import ext as external
 from bookclub.utils import *
 
 
+# TODO:
+# Needed:
+#   - User: update
+#   - Book: get, update
+#   - Club: update
+#   - Review: create, get, update, delete
+#   - Comment: create, get, update, delete
+#   - UBL:
+
 @pytest.fixture()
 def handle() -> str:
-    return ''.join([rnd.choice(string.ascii_letters + string.digits) for x in range(0, rnd.randint(1, 60))])
+    return ''.join([rnd.choice(string.ascii_letters + string.digits) for _ in range(0, rnd.randint(1, 60))])
 
 
 @pytest.fixture(name='book')

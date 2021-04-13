@@ -1,6 +1,6 @@
 import json
 
-from bookclub.mason import mason
+from bookclub.mason import *
 
 sample = """
 {

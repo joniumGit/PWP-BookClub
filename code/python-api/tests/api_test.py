@@ -3,7 +3,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from bookclub import api, database
+from bookclub import api
+from bookclub.data import database
 
 client = TestClient(api)
 
@@ -25,7 +26,7 @@ def hello_test():
 
 
 def test_db(db: Session):
-    from bookclub.database.db_models import User
+    from bookclub.data.model.db_models import User
     u1 = User(username="test")
     u2 = User(username="test")
     db.add(u1)

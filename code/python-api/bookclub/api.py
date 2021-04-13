@@ -4,10 +4,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as LowHTTPException
 
-from .database import *
+from .data import *
+from .mason import MASON
 from .resources.paths import entry
-
-MASON = 'application/vnd.mason+json'
 
 DATABASE_URL = "mysql+pymysql://root:test@localhost:6969/book_club"
 
@@ -53,3 +52,6 @@ def low_http_exception(r: Request, exc: LowHTTPException):
             }
         },
     )
+
+
+__all__ = 'api'
