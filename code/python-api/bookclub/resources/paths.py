@@ -38,9 +38,14 @@ async def add_user(
     response.headers["Location"] = request.url_for("get_user", user=user.username)
 
 
-@entry.get("/users")
+from .path_models import Users, Control
+
+
+@entry.get("/users", response_model=Users, response_model_exclude_none=True, response_model_exclude_defaults=True)
 async def get_users(db: Session = Depends(database)):
-    return {'items': [ext.User.from_orm(x) for x in db.query(dbm.User).all()]}
+    u = Users(items=[ext.User.from_orm(x) for x in db.query(dbm.User).all()])
+    u.controls = {"bc:home": Control(href="http://localhost:8000/", description="Home link")}
+    return u
 
 
 @entry.get("/users/{user}", response_model=ext.User)
