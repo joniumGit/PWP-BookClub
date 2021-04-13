@@ -9,11 +9,11 @@ from bookclub.utils import *
 
 
 def create_user(db: Session) -> external.User:
-    return internal.create_user(external.User(username="test", description="test"), db)
+    return internal.get_user(internal.create_user(external.User(username="test", description="test"), db), db)
 
 
 def create_book(db: Session) -> external.Book:
-    return internal.create_book(external.Book(handle="book", full_name="full-name"), db)
+    return internal.get_book(internal.create_book(external.Book(handle="book", full_name="full-name"), db), db)
 
 
 def test_create_book(db: Session):
@@ -35,14 +35,16 @@ def test_user_book(db: Session):
     book = create_book(db)
     db.commit()
     ubl = internal.store_user_book(
-        user,
-        book,
-        db,
-        reading_status='pending'
+        external.UserBookIncomingModel(
+            user=user.username,
+            handle=book.handle,
+            reading_status='pending'
+        ),
+        db
     )
     with pytest.raises(AlreadyExists):
         with db.begin_nested():
-            internal.store_user_book(user, book, db)
+            internal.store_user_book(external.UserBookIncomingModel(**ubl.dict()), db)
     assert ubl is not None
     return ubl
 
@@ -60,7 +62,7 @@ def test_get_book(db: Session):
     ubl_book = internal.get_book(ubl.handle, db, stats=False, user=ubl.user)
     assert ubl_book.reading_status == 'pending'
     with pytest.raises(NotFound):
-        internal.delete_user(ubl.user, db)
+        db.delete(internal._get_user(ubl.user, db))
         internal.get_book(ubl.handle, db, stats=False, user=ubl.user)
 
 

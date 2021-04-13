@@ -19,7 +19,7 @@ def db() -> Session:
 
 
 def hello_test():
-    from bookclub.resources.entry import HelloModel
+    from bookclub.resources.paths import HelloModel
     model: HelloModel = HelloModel(**client.get("/").json())
     assert model.name == "none" and model.message == "none"
 

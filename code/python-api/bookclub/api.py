@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as LowHTTPException
 
 from .database import *
-from .resources.entry import entry
+from .resources.paths import entry
 
 MASON = 'application/vnd.mason+json'
 
