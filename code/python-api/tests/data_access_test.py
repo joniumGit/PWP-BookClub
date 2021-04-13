@@ -1,3 +1,6 @@
+import random as rnd
+import string
+
 import pytest
 from sqlalchemy.orm import Session
 
@@ -8,49 +11,114 @@ from bookclub.resources import models as external
 from bookclub.utils import *
 
 
-def create_user(db: Session) -> external.User:
-    return internal.get_user(internal.create_user(external.User(username="test", description="test"), db), db)
+@pytest.fixture()
+def handle() -> str:
+    return ''.join([rnd.choice(string.ascii_letters + string.digits) for x in range(0, rnd.randint(1, 60))])
 
 
-def create_book(db: Session) -> external.Book:
-    return internal.get_book(internal.create_book(external.Book(handle="book", full_name="full-name"), db), db)
+@pytest.fixture(name='book')
+def create_book(handle: str, db: Session) -> str:
+    ext_book = external.Book(
+        handle=handle,
+        full_name=handle * 2,
+        pages=rnd.randint(1, 10000),
+        description="A test book",
+    )
+    return internal.create_book(ext_book, db)
 
 
-def test_create_book(db: Session):
-    assert create_book(db) is not None
+@pytest.fixture(name='user')
+def create_user(handle: str, db: Session) -> str:
+    ext_user = external.User(
+        username=handle,
+        description="A test user"
+    )
+    return internal.create_user(ext_user, db)
+
+
+def test_book_create(handle: str, db: Session):
+    ext_book = external.Book(
+        handle=handle,
+        full_name=handle * 2,
+        pages=rnd.randint(1, 10000),
+        description="A test book",
+    )
+    nh = internal.create_book(ext_book, db)
+    book = internal.get_book(nh, db)
+    assert book == ext_book
     with pytest.raises(AlreadyExists):
         with db.begin_nested():
-            create_book(db)
+            internal.create_book(ext_book, db)
 
 
-def test_create_user(db: Session):
-    assert create_user(db) is not None
+def test_user_create(handle: str, db: Session):
+    ext_user = external.User(
+        username=handle,
+        description="A test user"
+    )
+    uname = internal.create_user(ext_user, db)
+    user = internal.get_user(uname, db)
+    assert user == ext_user
     with pytest.raises(AlreadyExists):
         with db.begin_nested():
-            create_user(db)
+            internal.create_user(ext_user, db)
 
 
-def test_user_book(db: Session):
-    user = create_user(db)
-    book = create_book(db)
+@pytest.fixture(name='club')
+def create_club(handle: str, user: str, db: Session):
+    ext_club = external.Club(
+        handle=handle,
+        description=handle * 2,
+        owner=user
+    )
+    return internal.create_club(ext_club, db)
+
+
+def test_club_create(handle: str, user: str, db: Session):
+    ext_club = external.Club(
+        handle=handle,
+        description=handle * 2,
+        owner=user
+    )
+    ch = internal.create_club(ext_club, db)
+    club = internal.get_club(ch, db)
+    assert club == ext_club
+    with pytest.raises(AlreadyExists):
+        with db.begin_nested():
+            internal.create_club(ext_club, db)
+
+
+@pytest.fixture(name='ubl')
+def user_book(user: str, book: str, db: Session) -> external.UserBook:
     db.commit()
-    ubl = internal.store_user_book(
+    internal.store_user_book(
         external.UserBookIncomingModel(
-            user=user.username,
-            handle=book.handle,
-            reading_status='pending'
+            user=user,
+            handle=book,
+            reading_status=external.StatusEnum.pending,
+            ignored=False,
+            liked=True,
+            reviewed=False,
+            current_page=1
         ),
         db
     )
+    return internal.get_book(book, db, user=user)
+
+
+def test_ubl_create(ubl: external.UserBook, db: Session):
     with pytest.raises(AlreadyExists):
         with db.begin_nested():
             internal.store_user_book(external.UserBookIncomingModel(**ubl.dict()), db)
+    internal.store_user_book(external.UserBookIncomingModel(**ubl.dict()), db, overwrite=True)
     assert ubl is not None
-    return ubl
 
 
-def test_get_book(db: Session):
-    ubl = test_user_book(db)
+#
+# GET
+#
+
+def test_book_get(ubl: external.UserBook, db: Session):
     book = internal.get_book(ubl.handle, db)
     assert book is not None
     book_with_stats = internal.get_book(ubl.handle, db, stats=True)
@@ -66,8 +134,33 @@ def test_get_book(db: Session):
         internal.get_book(ubl.handle, db, stats=False, user=ubl.user)
 
 
-def test_delete_book(db: Session):
-    book = create_book(db)
-    internal.delete_book(book, db)
+#
+# DELETE
+#
+
+def test_delete_book(book: str, db: Session):
+    bb = internal.get_book(book, db)
+    internal.delete_book(bb, db)
     with pytest.raises(NotFound):
-        internal.get_book(book.handle, db)
+        internal.delete_club(book, db)
+
+
+def test_delete_user(user: str, db: Session):
+    uu = internal.get_user(user, db)
+    internal.delete_user(uu, db)
+    with pytest.raises(NotFound):
+        internal.delete_user(user, db)
+
+
+def test_delete_ubl(ubl: external.UserBook, db: Session):
+    internal.modify_user_book_ignore_status(db, ubl=ubl)
+    assert internal.get_book(ubl.handle, db, user=ubl.user).ignored
+    internal.modify_user_book_ignore_status(db, user=ubl.user, book=ubl.handle, ignored=False)
+    assert not internal.get_book(ubl.handle, db, user=ubl.user).ignored
+
+
+def test_delete_club(club: str, db: Session):
+    c = internal.get_club(club, db)
+    internal.delete_club(c, db)
+    with pytest.raises(NotFound):
+        internal.delete_club(club, db)

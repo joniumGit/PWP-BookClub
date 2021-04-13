@@ -4,7 +4,7 @@ Utilities for interacting with the database
 No checking for duplicates is needed, all public function handle it by themselves.
 On any error (duplicate, missing etc.) a HTTPError is thrown with an appropriate error code
 """
-from typing import Union, Tuple, Optional, Type, Any, TypeVar, Dict, NoReturn
+from typing import Union, Tuple, Optional, Type, Any, TypeVar, Dict, NoReturn, Set
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Row
@@ -34,6 +34,8 @@ def __get_handle(cls: Type[T], handle: str, db: Session, throw: bool) -> Optiona
     """
     res = db.query(cls).where(getattr(cls, 'handle') == handle).first()
     if res:
+        if res.deleted:
+            raise NotFound(f"{cls.__name__} deleted: {handle}")
         return res
     else:
         if throw:
@@ -53,6 +55,8 @@ def _get_user(username: str, db: Session, throw: bool = True) -> Optional[intern
     """
     res = db.query(internal.User).where(internal.User.username == username).first()
     if res:
+        if res.deleted:
+            raise NotFound(f"User deleted: {username}")
         return res
     else:
         if throw:
@@ -136,7 +140,13 @@ def _check_handle_available(cls: Type[T], handle: str, db: Session) -> NoReturn:
         raise AlreadyExists(f"{cls.__name__} with handle {handle} already exists")
 
 
-def _add(e: Any, i: Type[T], db: Session) -> T:
+def _add(
+        e: Any,
+        i: Type[T],
+        db: Session,
+        exclude: Set[str] = None,
+        extra: Dict[str, Any] = None
+) -> T:
     """
     Add an ORM entity to session
 
@@ -145,8 +155,10 @@ def _add(e: Any, i: Type[T], db: Session) -> T:
     :param db:  ORM Session
     :return:    Created internal entity
     """
+    if extra is None:
+        extra = {}
     with db.begin_nested():
-        no = i(**e.dict(exclude_none=True))
+        no = i(**e.dict(exclude_none=True, exclude=exclude), **extra)
         db.add(no)
         return no
 
@@ -302,8 +314,14 @@ def create_comment(comment: external.NewComment, db: Session) -> int:
     :param db:      ORM Session
     :return:        UUID of the newly created comment
     """
-    _get_user(comment.user, db)
-    return _add(comment, internal.Comment, db).uuid
+    u = _get_user(comment.user, db)
+    return _add(
+        comment,
+        internal.Comment,
+        db,
+        exclude={'user'},
+        extra={'user_id': u.id}
+    ).uuid
 
 
 def update_comment(comment: external.Comment, db: Session) -> bool:
@@ -361,7 +379,16 @@ def create_review(review: external.Review, db: Session) -> Tuple[str, str]:
     """
     u = _get_user(review.user, db)
     b = _get_book(review.book, db)
-    _add(review, internal.Review, db)
+    _add(
+        review,
+        internal.Review,
+        db,
+        exclude={'user', 'book'},
+        extra={
+            'user_id': u.id,
+            'book_id': b.id
+        }
+    )
     return u.username, b.handle
 
 
@@ -499,12 +526,9 @@ def delete_user(user: Union[str, external.User], db: Session) -> NoReturn:
             username = user.username
         else:
             username = user
-        try:
-            u = db.query(internal.User).where(internal.User.username == username).one()
-            with db.begin_nested():
-                u.deleted = 1
-        except NoResultFound:
-            raise NotFound(f"User not found {username}")
+        u = _get_user(username, db)
+        with db.begin_nested():
+            u.deleted = 1
 
 
 #
@@ -519,9 +543,16 @@ def create_club(club: external.Club, db: Session) -> str:
     :return:        Newly created club handle
     """
     _check_handle_available(internal.Club, club.handle, db)
+    owner = None
     if club.owner is not None:
-        _get_user(club.owner, db)
-    return _add(club, internal.Club, db).handle
+        owner = _get_user(club.owner, db)
+    return _add(
+        club,
+        internal.Club,
+        db,
+        exclude={'owner'},
+        extra={'owner_id': owner.id if owner is not None else None}
+    ).handle
 
 
 def update_club(old_handle: str, club: external.Club, db: Session) -> Optional[str]:
@@ -626,3 +657,35 @@ def store_user_book(
             **external.Book.from_orm(new_record.book).dict(exclude_none=True),
             user=new_record.user.username,
         )
+
+
+def modify_user_book_ignore_status(
+        db: Session,
+        user: Union[str, external.User] = None,
+        book: Union[str, external.Book] = None,
+        ubl: external.UserBook = None,
+        ignored: bool = True
+) -> NoReturn:
+    """
+    User book ignore status helper
+    Needs to know the UBL model or user and book pair
+
+    Basically a soft delete
+    :param ubl:         UserBook model
+    :param user:        User
+    :param book:        Book
+    :param db:          ORM Session
+    :param ignored:     Ignored status (default: True)
+    """
+    b = _get_book((book if isinstance(book, str) else book.handle) if ubl is None else ubl.handle, db)
+    u = _get_user((user if isinstance(user, str) else user.username) if ubl is None else ubl.user, db)
+    with db.begin_nested():
+        try:
+            r: internal.UserBook = db.query(internal.UserBook).where(
+                internal.UserBook.user_id == u.id
+            ).where(
+                internal.UserBook.book_id == b.id
+            ).one()
+            r.ignored = ignored
+        except NoResultFound:
+            raise NotFound(f"User {u.username} has no record for {b.handle}")

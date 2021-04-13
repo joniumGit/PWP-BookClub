@@ -1,12 +1,13 @@
+import logging
+
 # noinspection PyUnresolvedReferences
 from .exceptions import (
     HTTPException,
     AlreadyExists,
     NotFound,
     Unauthorized,
-    InternalError
+    InternalError,
+    Forbidden
 )
-
-import logging
 
 logger = logging.getLogger('bookclub')
