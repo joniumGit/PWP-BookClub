@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session, DeclarativeMeta
 
 from .model import data_models as external
 from .model import db_models as internal
+from .model import path_models as paths
+from .. import mason as mason
 from ..utils import *
 
 T = TypeVar('T', bound=DeclarativeMeta)
@@ -691,6 +693,12 @@ def modify_user_book_ignore_status(
             raise NotFound(f"User {u.username} has no record for {b.handle}")
 
 
+def get_users(db: Session) -> paths.Users:
+    u = paths.Users(items=[external.User.from_orm(x) for x in db.query(internal.User).all()])
+    u.controls = {"bc:home": mason.Control(href="http://localhost:8000/", description="Home link")}
+    return u
+
+
 __all__ = [
     'get_club',
     'get_user',
@@ -713,5 +721,7 @@ __all__ = [
     'create_review',
     'create_comment',
     'modify_user_book_ignore_status',
-    'store_user_book'
+    'store_user_book',
+    # more
+    'get_users'
 ]

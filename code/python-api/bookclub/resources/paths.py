@@ -1,10 +1,9 @@
 from typing import Optional
 
-from fastapi import APIRouter, Response, Request, Depends
+from fastapi import APIRouter, Response, Request
 from pydantic import BaseModel
 
-from ..data import da, Session, database
-from ..data.model import dbm, ext
+from ..data import *
 
 entry = APIRouter()
 
@@ -28,26 +27,21 @@ async def hello_endpoint(query: HelloQuery = Depends()):
 
 
 @entry.put("/users", status_code=204)
-async def add_user(
-        user: ext.User,
+async def add_user_resource(
+        user: User,
         request: Request,
         response: Response,
         db: Session = Depends(database)
 ):
-    da.create_user(user, db)
+    create_user(user, db)
     response.headers["Location"] = request.url_for("get_user", user=user.username)
 
 
-from .path_models import Users, Control
-
-
 @entry.get("/users", response_model=Users, response_model_exclude_none=True, response_model_exclude_defaults=True)
-async def get_users(db: Session = Depends(database)):
-    u = Users(items=[ext.User.from_orm(x) for x in db.query(dbm.User).all()])
-    u.controls = {"bc:home": Control(href="http://localhost:8000/", description="Home link")}
-    return u
+async def get_users_resource(db: Session = Depends(database)):
+    return get_users(db)
 
 
-@entry.get("/users/{user}", response_model=ext.User)
-async def get_user(user: str, db: Session = Depends(database)):
-    return da.get_user(user, db)
+@entry.get("/users/{user}", response_model=User)
+async def get_user_resource(user: str, db: Session = Depends(database)):
+    return get_user(user, db)
