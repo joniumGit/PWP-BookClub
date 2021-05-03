@@ -1,7 +1,8 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+from ...mason import MasonBase
 
 
 class StatusEnum(str, Enum):
@@ -10,7 +11,7 @@ class StatusEnum(str, Enum):
     reading = 'reading'
 
 
-class User(BaseModel):
+class User(MasonBase):
     username: str = Field(min_length=1, max_length=60)
     description: Optional[str] = Field(max_length=250)
 
@@ -18,7 +19,7 @@ class User(BaseModel):
         orm_mode = True
 
 
-class BookStatsMixIn(BaseModel):
+class BookStatsMixIn(MasonBase):
     rating: float = Field(le=10, ge=1)
     readers: int = Field(ge=0)
     completed: int = Field(ge=0)
@@ -27,7 +28,7 @@ class BookStatsMixIn(BaseModel):
     disliked: int = Field(ge=0)
 
 
-class Book(BaseModel):
+class Book(MasonBase):
     handle: str = Field(min_length=1, max_length=60)
     full_name: str = Field(min_length=1, max_length=250)
     description: Optional[str] = Field(max_length=65000)
@@ -37,7 +38,7 @@ class Book(BaseModel):
         orm_mode = True
 
 
-class UserBookInternalBase(BaseModel):
+class UserBookInternalBase(MasonBase):
     reading_status: Optional[StatusEnum]
     reviewed: Optional[bool]
     ignored: Optional[bool]
@@ -48,7 +49,7 @@ class UserBookInternalBase(BaseModel):
         orm_mode = True
 
 
-class UserBookIncomingModel(BaseModel):
+class UserBookIncomingModel(MasonBase):
     user: str = Field(min_length=1, max_length=60)
     handle: str = Field(min_length=1, max_length=60)
     reading_status: Optional[StatusEnum]
@@ -70,7 +71,7 @@ class StatUserBook(BookStatsMixIn, UserBook):
     pass
 
 
-class ClubInternalBase(BaseModel):
+class ClubInternalBase(MasonBase):
     handle: str = Field(min_length=1, max_length=60)
     description: Optional[str] = Field(max_length=2040)
 
@@ -82,7 +83,7 @@ class Club(ClubInternalBase):
     owner: Optional[str] = Field(min_length=1, max_length=60)
 
 
-class ReviewInternalBase(BaseModel):
+class ReviewInternalBase(MasonBase):
     stars: int = Field(le=5, ge=1)
     title: str = Field(min_length=1, max_length=120)
     content: Optional[str] = Field(max_length=65000)
@@ -96,12 +97,12 @@ class Review(ReviewInternalBase):
     book: str = Field(min_length=1, max_length=60)
 
 
-class NewComment(BaseModel):
+class NewComment(MasonBase):
     user: str = Field(min_length=1, max_length=60)
     content: str = Field(min_length=1, max_length=65000)
 
 
-class CommentInternalBase(BaseModel):
+class CommentInternalBase(MasonBase):
     uuid: int
     content: str = Field(min_length=1, max_length=65000)
 
