@@ -186,7 +186,7 @@ def _modify(i: T, d: Dict[str, Any], db: Session) -> bool:
 #
 # BOOK
 #
-def create_book(book: external.Book, db: Session) -> str:
+def create_book(book: external.NewBook, db: Session) -> str:
     """
     Create a Book
 
@@ -198,7 +198,7 @@ def create_book(book: external.Book, db: Session) -> str:
     return _add(book, internal.Book, db).handle
 
 
-def update_book(old_handle: str, book: external.Book, db: Session) -> Optional[str]:
+def update_book(old_handle: str, book: external.NewBook, db: Session) -> Optional[str]:
     """
     Updates a book
 
@@ -280,7 +280,6 @@ def get_book(handle: str, db: Session, stats: bool = False, user: Union[str, ext
                 result = db.query(internal.Book).where(
                     internal.Book.handle == handle
                 ).where(
-
                     internal.Book.deleted != 1
                 ).one()
                 return external.Book.from_orm(result)
@@ -288,7 +287,7 @@ def get_book(handle: str, db: Session, stats: bool = False, user: Union[str, ext
         raise NotFound(f"Failed to find data for book {handle}")
 
 
-def delete_book(book: Union[str, external.Book], db: Session) -> NoReturn:
+def delete_book(book: Union[str, external.NewBook], db: Session) -> NoReturn:
     """
     Soft delete a book
 
@@ -341,7 +340,7 @@ def update_comment(comment: external.Comment, db: Session) -> bool:
     return _modify(c, d, db)
 
 
-def get_comment(uuid: int, db: Session) -> external.Comment:
+def get_comment(uuid: int, db: Session) -> external.CommentMason:
     """
     Get a comment
 
@@ -350,7 +349,7 @@ def get_comment(uuid: int, db: Session) -> external.Comment:
     :return:     External comment model
     """
     c = _get_comment(uuid, db)
-    return external.Comment(
+    return external.CommentMason(
         user=c.user.username if c.user_id is not None else None,
         **external.CommentInternalBase.from_orm(c).dict(exclude_none=True)
     )
@@ -371,7 +370,7 @@ def delete_comment(comment: Union[int, external.Comment], db: Session) -> NoRetu
 #
 # Review
 #
-def create_review(review: external.Review, db: Session) -> Tuple[str, str]:
+def create_review(review: external.NewReview, db: Session) -> Tuple[str, str]:
     """
     Create a review
 
@@ -394,7 +393,7 @@ def create_review(review: external.Review, db: Session) -> Tuple[str, str]:
     return u.username, b.handle
 
 
-def update_review(review: external.Review, db: Session) -> bool:
+def update_review(review: external.NewReview, db: Session) -> bool:
     """
     Updates a review (book and user are ignored)
 
@@ -407,7 +406,7 @@ def update_review(review: external.Review, db: Session) -> bool:
     return _modify(r, d, db)
 
 
-def get_review(user: Union[str, external.User], book: Union[str, external.Book], db: Session) -> external.Review:
+def get_review(user: Union[str, external.NewUser], book: Union[str, external.NewBook], db: Session) -> external.Review:
     """
     Get a review
 
@@ -436,7 +435,7 @@ def get_review(user: Union[str, external.User], book: Union[str, external.Book],
 
 
 def delete_review(
-        review: Union[external.Review, Tuple[Union[str, external.Book], Union[str, external.User]]],
+        review: Union[external.NewReview, Tuple[Union[str, external.NewBook], Union[str, external.NewUser]]],
         db: Session
 ) -> NoReturn:
     """
@@ -467,7 +466,7 @@ def delete_review(
 #
 # Users
 #
-def create_user(user: external.User, db: Session) -> str:
+def create_user(user: external.NewUser, db: Session) -> str:
     """
     Create a user
 
@@ -481,7 +480,7 @@ def create_user(user: external.User, db: Session) -> str:
         return _add(user, internal.User, db).username
 
 
-def update_user(old_username: str, user: external.User, db: Session) -> Optional[str]:
+def update_user(old_username: str, user: external.NewUser, db: Session) -> Optional[str]:
     """
     Updates a user
 
@@ -515,7 +514,7 @@ def get_user(username: str, db: Session) -> external.User:
     return external.User.from_orm(_get_user(username, db))
 
 
-def delete_user(user: Union[str, external.User], db: Session) -> NoReturn:
+def delete_user(user: Union[str, external.NewUser], db: Session) -> NoReturn:
     """
     Soft delete a user
 
@@ -524,7 +523,7 @@ def delete_user(user: Union[str, external.User], db: Session) -> NoReturn:
     """
     if user is not None:
         username: str
-        if isinstance(user, external.User):
+        if isinstance(user, external.NewUser):
             username = user.username
         else:
             username = user
@@ -536,7 +535,7 @@ def delete_user(user: Union[str, external.User], db: Session) -> NoReturn:
 #
 # Club
 #
-def create_club(club: external.Club, db: Session) -> str:
+def create_club(club: external.NewClub, db: Session) -> str:
     """
     Create a club
 
@@ -557,7 +556,7 @@ def create_club(club: external.Club, db: Session) -> str:
     ).handle
 
 
-def update_club(old_handle: str, club: external.Club, db: Session) -> Optional[str]:
+def update_club(old_handle: str, club: external.NewClub, db: Session) -> Optional[str]:
     """
     Updates a club
 
@@ -594,7 +593,7 @@ def get_club(handle: str, db: Session) -> external.Club:
     )
 
 
-def delete_club(club: Union[str, external.Club], db: Session) -> NoReturn:
+def delete_club(club: Union[str, external.NewClub], db: Session) -> NoReturn:
     """
     Soft delete a club
 
@@ -614,7 +613,7 @@ def delete_club(club: Union[str, external.Club], db: Session) -> NoReturn:
 # User book
 #
 def store_user_book(
-        model: external.UserBookIncomingModel,
+        model: external.NewUserBook,
         db: Session,
         overwrite: bool = False
 ) -> external.UserBook:
@@ -663,9 +662,9 @@ def store_user_book(
 
 def modify_user_book_ignore_status(
         db: Session,
-        user: Union[str, external.User] = None,
-        book: Union[str, external.Book] = None,
-        ubl: external.UserBook = None,
+        user: Union[str, external.NewUser] = None,
+        book: Union[str, external.NewBook] = None,
+        ubl: external.NewUserBook = None,
         ignored: bool = True
 ) -> NoReturn:
     """
@@ -709,10 +708,18 @@ def get_books(db: Session) -> paths.Books:
     return u
 
 
-def get_clubs(db: Session) -> paths.Books:
-    u = paths.Clubs(items=[
-        external.Club.from_orm(x) for x in db.query(internal.Club).where(internal.Club.deleted != 1).all()
-    ])
+def get_clubs(db: Session) -> paths.Clubs:
+    club = db.query(internal.Club).where(internal.Club.deleted != 1).all()
+    iu = [
+        external.ClubInternalBase.from_orm(x) for x in club
+    ]
+    u = list()
+    for c, ic in zip(club, iu):
+        if hasattr(c, 'owner') and c.owner is not None:
+            u.append(external.Club(**ic.dict(), owner=c.owner.username))
+        else:
+            u.append(ic)
+    u = paths.Clubs(items=u)
     u.controls = {"bc:home": mason.Control(href="http://localhost:8000/", description="Home link")}
     return u
 

@@ -26,9 +26,9 @@ async def hello_endpoint(query: HelloQuery = Depends()):
     )
 
 
-@entry.put("/users", status_code=204)
+@entry.post("/users", status_code=204)
 async def add_user_resource(
-        user: User,
+        user: NewUser,
         request: Request,
         response: Response,
         db: Session = Depends(database)
@@ -50,9 +50,34 @@ async def get_user_resource(user: str, db: Session = Depends(database)):
     return u
 
 
+@entry.post(
+    "/users/{user}",
+    status_code=204,
+    responses={
+        304: {
+
+        }
+    }
+)
+async def edit_user_resource(
+        user: str,
+        new_user: NewUser,
+        request: Request,
+        response: Response,
+        db: Session = Depends(database)
+):
+    uname = update_user(user, new_user, db)
+    if uname is not None:
+        response.headers["Location"] = request.url_for("edit_user_resource", user=new_user.username)
+        response.status_code = 204
+        return response
+    response.status_code = 304
+    return response
+
+
 @entry.delete("/users", status_code=204)
 async def delete_user_resource(
-        user: User,
+        user: NewUser,
         request: Request,
         response: Response,
         db: Session = Depends(database)
@@ -64,9 +89,9 @@ async def delete_user_resource(
 
 
 # Books
-@entry.put("/books", status_code=204)
+@entry.post("/books", status_code=204)
 async def add_book_resource(
-        book: Book,
+        book: NewBook,
         request: Request,
         response: Response,
         db: Session = Depends(database)
@@ -88,9 +113,23 @@ async def get_book_resource(book: str, db: Session = Depends(database)):
     return u
 
 
+@entry.put("/books/{book}", status_code=204)
+async def edit_book_resource(
+        book: str,
+        new_book: Book,
+        request: Request,
+        response: Response,
+        db: Session = Depends(database)
+):
+    update_book(book, new_book, db)
+    response.headers["Location"] = request.url_for("edit_book_resource", book=new_book.handle)
+    response.status_code = 204
+    return response
+
+
 @entry.delete("/books", status_code=204)
 async def delete_book_resource(
-        book: Book,
+        book: NewBook,
         request: Request,
         response: Response,
         db: Session = Depends(database)
@@ -102,15 +141,15 @@ async def delete_book_resource(
 
 
 # Clubs
-@entry.put("/clubs", status_code=204)
+@entry.post("/clubs", status_code=204)
 async def add_club_resource(
-        club: Club,
+        club: NewClub,
         request: Request,
         response: Response,
         db: Session = Depends(database)
 ):
     create_club(club, db)
-    response.headers["Location"] = request.url_for("get_club_resource", club=club.owner)
+    response.headers["Location"] = request.url_for("add_club_resource", club=club.handle)
     response.status_code = 204
     return response
 
@@ -121,19 +160,19 @@ async def get_clubs_resource(db: Session = Depends(database)):
 
 
 @entry.get("/clubs/{club}", response_model=Club, response_model_exclude_none=True, response_model_exclude_defaults=True)
-async def get_club_resource(handle: str, db: Session = Depends(database)):
-    u = get_club(handle, db)
+async def get_club_resource(club: str, db: Session = Depends(database)):
+    u = get_club(club, db)
     return u
 
 
 @entry.delete("/clubs", status_code=204)
 async def delete_club_resource(
-        club: Club,
+        club: NewClub,
         request: Request,
         response: Response,
         db: Session = Depends(database)
 ):
     delete_club(club, db)
-    response.headers["Location"] = request.url_for("get_club_resource", club=club.handle)
+    response.headers["Location"] = request.url_for("delete_club_resource", club=club.handle)
     response.status_code = 204
     return response

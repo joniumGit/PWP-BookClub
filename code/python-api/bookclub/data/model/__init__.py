@@ -7,8 +7,15 @@ from .data_models import (
     Club,
     StatusEnum,
     Review,
-    UserBookIncomingModel,
+    Comment,
+    CommentMason
+)
+from .data_models import (
+    NewUser,
+    NewBook,
     NewComment,
-    Comment
+    NewClub,
+    NewReview,
+    NewUserBook,
 )
 from .path_models import *

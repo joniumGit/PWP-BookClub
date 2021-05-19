@@ -26,7 +26,7 @@ def handle() -> str:
 
 @pytest.fixture(name='book')
 def create_book(handle: str, db: Session) -> str:
-    ext_book = da.Book(
+    ext_book = da.NewBook(
         handle=handle,
         full_name=handle * 2,
         pages=rnd.randint(1, 10000),
@@ -37,7 +37,7 @@ def create_book(handle: str, db: Session) -> str:
 
 @pytest.fixture(name='user')
 def create_user(handle: str, db: Session) -> str:
-    ext_user = da.User(
+    ext_user = da.NewUser(
         username=handle,
         description="A test user"
     )
@@ -45,7 +45,7 @@ def create_user(handle: str, db: Session) -> str:
 
 
 def test_book_create(handle: str, db: Session):
-    ext_book = da.Book(
+    ext_book = da.NewBook(
         handle=handle,
         full_name=handle * 2,
         pages=rnd.randint(1, 10000),
@@ -53,20 +53,20 @@ def test_book_create(handle: str, db: Session):
     )
     nh = da.create_book(ext_book, db)
     book = da.get_book(nh, db)
-    assert book == ext_book
+    assert book.handle == ext_book.handle
     with pytest.raises(AlreadyExists):
         with db.begin_nested():
             da.create_book(ext_book, db)
 
 
 def test_user_create(handle: str, db: Session):
-    ext_user = da.User(
+    ext_user = da.NewUser(
         username=handle,
         description="A test user"
     )
     uname = da.create_user(ext_user, db)
     user = da.get_user(uname, db)
-    assert user == ext_user
+    assert user.username == ext_user.username
     with pytest.raises(AlreadyExists):
         with db.begin_nested():
             da.create_user(ext_user, db)
@@ -74,7 +74,7 @@ def test_user_create(handle: str, db: Session):
 
 @pytest.fixture(name='club')
 def create_club(handle: str, user: str, db: Session):
-    ext_club = da.Club(
+    ext_club = da.NewClub(
         handle=handle,
         description=handle * 2,
         owner=user
@@ -83,14 +83,14 @@ def create_club(handle: str, user: str, db: Session):
 
 
 def test_club_create(handle: str, user: str, db: Session):
-    ext_club = da.Club(
+    ext_club = da.NewClub(
         handle=handle,
         description=handle * 2,
         owner=user
     )
     ch = da.create_club(ext_club, db)
     club = da.get_club(ch, db)
-    assert club == ext_club
+    assert club.handle == ext_club.handle
     with pytest.raises(AlreadyExists):
         with db.begin_nested():
             da.create_club(ext_club, db)
@@ -100,7 +100,7 @@ def test_club_create(handle: str, user: str, db: Session):
 def user_book(user: str, book: str, db: Session) -> da.UserBook:
     db.commit()
     da.store_user_book(
-        da.UserBookIncomingModel(
+        da.NewUserBook(
             user=user,
             handle=book,
             reading_status=da.StatusEnum.pending,
@@ -114,11 +114,11 @@ def user_book(user: str, book: str, db: Session) -> da.UserBook:
     return da.get_book(book, db, user=user)
 
 
-def test_ubl_create(ubl: da.UserBook, db: Session):
+def test_ubl_create(ubl: da.NewUserBook, db: Session):
     with pytest.raises(AlreadyExists):
         with db.begin_nested():
-            da.store_user_book(da.UserBookIncomingModel(**ubl.dict()), db)
-    da.store_user_book(da.UserBookIncomingModel(**ubl.dict()), db, overwrite=True)
+            da.store_user_book(da.NewUserBook(**ubl.dict()), db)
+    da.store_user_book(da.NewUserBook(**ubl.dict()), db, overwrite=True)
     assert ubl is not None
 
 
@@ -126,7 +126,7 @@ def test_ubl_create(ubl: da.UserBook, db: Session):
 # GET
 #
 
-def test_book_get(ubl: da.UserBook, db: Session):
+def test_book_get(ubl: da.NewUserBook, db: Session):
     book = da.get_book(ubl.handle, db)
     assert book is not None
     book_with_stats = da.get_book(ubl.handle, db, stats=True)
@@ -161,7 +161,7 @@ def test_delete_user(user: str, db: Session):
         da.delete_user(user, db)
 
 
-def test_delete_ubl(ubl: da.UserBook, db: Session):
+def test_delete_ubl(ubl: da.NewUserBook, db: Session):
     da.modify_user_book_ignore_status(db, ubl=ubl)
     assert da.get_book(ubl.handle, db, user=ubl.user).ignored
     da.modify_user_book_ignore_status(db, user=ubl.user, book=ubl.handle, ignored=False)
