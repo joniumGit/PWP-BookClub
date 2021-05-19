@@ -8,6 +8,16 @@ class Users(MasonBase):
     items: List[User]
 
 
+class Books(MasonBase):
+    items: List[Book]
+
+
+class Clubs(MasonBase):
+    items: List[Club]
+
+
 __all__ = [
-    'Users'
+    'Users',
+    'Books',
+    'Clubs'
 ]

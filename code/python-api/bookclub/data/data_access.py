@@ -694,7 +694,25 @@ def modify_user_book_ignore_status(
 
 
 def get_users(db: Session) -> paths.Users:
-    u = paths.Users(items=[external.User.from_orm(x) for x in db.query(internal.User).all()])
+    u = paths.Users(items=[
+        external.User.from_orm(x) for x in db.query(internal.User).where(internal.User.deleted != 1).all()
+    ])
+    u.controls = {"bc:home": mason.Control(href="http://localhost:8000/", description="Home link")}
+    return u
+
+
+def get_books(db: Session) -> paths.Books:
+    u = paths.Books(items=[
+        external.Book.from_orm(x) for x in db.query(internal.Book).where(internal.Book.deleted != 1).all()
+    ])
+    u.controls = {"bc:home": mason.Control(href="http://localhost:8000/", description="Home link")}
+    return u
+
+
+def get_clubs(db: Session) -> paths.Books:
+    u = paths.Clubs(items=[
+        external.Club.from_orm(x) for x in db.query(internal.Club).where(internal.Club.deleted != 1).all()
+    ])
     u.controls = {"bc:home": mason.Control(href="http://localhost:8000/", description="Home link")}
     return u
 
@@ -723,5 +741,7 @@ __all__ = [
     'modify_user_book_ignore_status',
     'store_user_book',
     # more
-    'get_users'
+    'get_users',
+    'get_books',
+    'get_clubs'
 ]

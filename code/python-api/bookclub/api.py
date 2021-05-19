@@ -13,6 +13,8 @@ DATABASE_URL = "mysql+pymysql://root:test@localhost:6969/book_club"
 if os.getenv("book_club_db_url"):
     DATABASE_URL = os.getenv("book_club_db_url")
     init(DATABASE_URL, False)
+elif os.getenv("book_club_persist"):
+    init(DATABASE_URL, False)
 else:
     init(DATABASE_URL, True)
 
