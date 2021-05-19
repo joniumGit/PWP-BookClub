@@ -1,0 +1,1 @@
+uvicorn bookclub:api --reload

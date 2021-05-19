@@ -45,26 +45,15 @@ This is just for testing though
 
 #### Testing
 
-Tests are not very extensive. The tests test some simple, but important features of the database.
+Tests are not very extensive. The tests cover most important features of the database.
 
 Run the database using [start.sh](start.sh)
 
-Go to [communicator](communicator) and do:
-> mvn compile
-
-This will generate all communications classes using [jooq](https://www.jooq.org/) for Kotlin with Java 11. This needs to
-connect to the empty database in order to generate communications classes from the actual database. DDL
-generation refused to work for the database init script for some reason.
-
-Then go to [tests](communicator/generated) and do:
+Do:
 > mvn test
 
+This will generate all communications classes using [jooq](https://www.jooq.org/) for Kotlin with Java 11. This needs to
+connect to the empty database in order to generate communications classes from the actual database. DDL generation
+refused to work for the database init script for some reason.
+
 This will run all tests for the database using the previously generated classes
-
-#### Usage
-
-Kotlin/Java
-
-* Run the database using [start.sh](start.sh)
-* Generate classes
-* Add generated classes as a dependency

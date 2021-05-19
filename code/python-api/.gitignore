@@ -1,0 +1,4 @@
+venv
+instance
+book_club.egg-info
+**/__pycache__
