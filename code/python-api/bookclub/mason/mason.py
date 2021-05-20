@@ -63,9 +63,9 @@ class Meta(BaseModel):
     """
     Mason Meta
     """
-    title: Optional[str] = Field(alias='@title')
-    description: Optional[str] = Field(alias='@description')
-    controls: Optional[Dict[str, Control]] = Field(alias='@controls')
+    title: Optional[str] = Field(None, alias='@title')
+    description: Optional[str] = Field(None, alias='@description')
+    controls: Optional[Dict[str, Control]] = Field(None, alias='@controls')
 
 
 class Namespace(BaseModel):
@@ -83,13 +83,13 @@ class Error(BaseModel):
     Mason error element
     """
     message: str = Field(alias='@error')
-    id: Optional[str] = Field(alias='@id')
-    code: Optional[str] = Field(alias='@code')
-    messages: Optional[List[str]] = Field(alias='@messages')
-    details: Optional[str] = Field(alias='@details')
-    httpStatusCode: Optional[int] = Field(alias='@httpStatusCode')
-    controls: Optional[Dict[str, Control]] = Field(alias='@controls')
-    time: Optional[datetime] = Field(alias='@time')
+    id: Optional[str] = Field(None, alias='@id')
+    code: Optional[str] = Field(None, alias='@code')
+    messages: Optional[List[str]] = Field(None, alias='@messages')
+    details: Optional[str] = Field(None, alias='@details')
+    httpStatusCode: Optional[int] = Field(None, alias='@httpStatusCode')
+    controls: Optional[Dict[str, Control]] = Field(None, alias='@controls')
+    time: Optional[datetime] = Field(None, alias='@time')
 
 
 class MasonBase(BaseModel):
@@ -98,7 +98,10 @@ class MasonBase(BaseModel):
 
     Can be used as a mix-in class to add Mason capability
     """
-    meta: Optional[Meta] = Field(alias='@meta')
-    namespaces: Optional[Dict[str, Namespace]] = Field(alias='@namespaces')
-    controls: Optional[Dict[str, Control]] = Field(alias='@controls')
-    error: Optional[Error] = Field(alias='@error')
+    meta: Optional[Meta] = Field(None, alias='@meta')
+    namespaces: Optional[Dict[str, Namespace]] = Field(None, alias='@namespaces')
+    controls: Optional[Dict[str, Control]] = Field(None, alias='@controls')
+    error: Optional[Error] = Field(None, alias='@error')
+
+    class Config:
+        allow_population_by_field_name = True
