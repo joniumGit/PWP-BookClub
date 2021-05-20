@@ -1,7 +1,9 @@
 import os
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 from starlette.exceptions import HTTPException as LowHTTPException
 
 from .data import *
@@ -32,6 +34,23 @@ def exception_handler(_: Request, exc: HTTPException):
             "@error": {
                 "@message": exc.detail or "An exception occurred",
                 "@httpStatusCode": exc.status_code
+            }
+        },
+    )
+
+
+@api.exception_handler(RequestValidationError)
+def exception_handler(_: Request, exc: RequestValidationError):
+    return JSONResponse(
+        media_type=MASON,
+        status_code=422,
+        content={
+            "@error": {
+                "@message": "Failed to process Entity",
+                "@messages": [
+                    (e.json() if isinstance(e, ValidationError) else str(e)) for e in exc.raw_errors
+                ],
+                "@httpStatusCode": 422
             }
         },
     )
