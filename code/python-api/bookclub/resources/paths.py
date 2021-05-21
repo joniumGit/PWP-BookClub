@@ -1,9 +1,9 @@
 from functools import partial
-from http.client import HTTPException
 from typing import Optional, TypeVar, Callable
 from urllib.parse import quote
 
 from fastapi import APIRouter, Response, Request
+from fastapi.exceptions import HTTPException
 from pydantic import BaseModel
 
 from ..data import *
@@ -12,10 +12,25 @@ from ..mason import MasonBase, Control, Namespace
 entry = APIRouter()
 entry.get = partial(entry.get, response_model_exclude_defaults=True, response_model_exclude_none=True)
 
+"""
+Replace this with a 'better' version that will quote absolutely everything.
+
+ASGI spec can't handle / characters and maybe some other ones, so we have to take them out.
+Similarly all incoming new models have to be sanitized.
+"""
 quote = partial(quote, safe="")
 
 
-def path(request: Request, func: str, **kwargs):
+def path(request: Request, func: str, **kwargs) -> str:
+    """
+    Resolve path from request
+    Until router can resolve full paths, this will stay here
+
+    :param request:     Request
+    :param func:        Path function to resolve from
+    :param kwargs:      Path arguments
+    :return:            Path string
+    """
     return request.url_for(func, **kwargs)
 
 
@@ -23,6 +38,16 @@ T = TypeVar('T', bound=MasonBase)
 
 
 def append_(request: Request, control: str, path_function: str, out: T, **kwargs) -> T:
+    """
+    Append a Control to a Model
+
+    :param request:             Request
+    :param control:             Control name to append
+    :param path_function:       Name of path function to resolve Control href from
+    :param out:                 Model to append to
+    :param kwargs:              Pass-through to Control
+    :return:                    Model
+    """
     if out.controls is None:
         out.controls = dict()
     try:
@@ -45,18 +70,46 @@ def append_(request: Request, control: str, path_function: str, out: T, **kwargs
 
 
 def append_self_link(request: Request, path_function: str, out: T) -> T:
+    """
+    Appends self link to a model
+
+    :param request: Request
+    :param out:     Model to append to
+    :return:        Model
+    """
     return append_(request, "self", path_function, out, method="GET")
 
 
 def append_delete_link(request: Request, path_function: str, out: T) -> T:
+    """
+    Appends delete link to a model
+
+    :param request: Request
+    :param out:     Model to append to
+    :return:        Model
+    """
     return append_(request, "delete", path_function, out, method="DELETE")
 
 
 def append_edit_link(request: Request, path_function: str, out: T) -> T:
+    """
+    Appends edit link to a model
+
+    :param request: Request
+    :param out:     Model to append to
+    :return:        Model
+    """
     return append_(request, "edit", path_function, out, method="PUT")
 
 
 def append_home_link(request: Request, out: T) -> T:
+    """
+    Appends home link to a model
+
+    :param request: Request
+    :param out:     Model to append to
+    :return:        Model
+    """
     if out.controls is None:
         out.controls = dict()
     out.controls.update({
@@ -68,6 +121,13 @@ def append_home_link(request: Request, out: T) -> T:
 
 
 def append_namespace(_: Request, out: T) -> T:
+    """
+    Appends namespace to object
+
+    :param _:   Request, not used can be anything
+    :param out: Model going out
+    :return:    Model going out
+    """
     if out.namespaces is None:
         out.namespaces = dict()
     out.namespaces.update(
@@ -81,6 +141,14 @@ def append_namespace(_: Request, out: T) -> T:
 
 
 def append_single_resource_controls(out: T, resource: str, request: Request) -> T:
+    """
+    Common links for all singular resources
+
+    :param out:         Model going out
+    :param resource:    SINGULAR NOUN of resource in question
+    :param request:     Request object
+    :return:            Model object
+    """
     append_self_link(request, "get_" + resource + "_resource", out)
     append_edit_link(request, "edit_" + resource + "_resource", out)
     append_delete_link(request, "delete_" + resource + "_resource", out)
@@ -89,6 +157,14 @@ def append_single_resource_controls(out: T, resource: str, request: Request) -> 
 
 
 def append_collection_resource_controls(out: T, resource: str, request: Request) -> T:
+    """
+    Common links for all collection resources
+
+    :param out:         Collection model going out
+    :param resource:    SINGULAR NOUN of resource in question
+    :param request:     Request object
+    :return:            Model object
+    """
     for item in out.items:
         append_single_resource_controls(item, resource, request)
     append_home_link(request, out)
@@ -107,12 +183,18 @@ def append_collection_resource_controls(out: T, resource: str, request: Request)
     return out
 
 
-class HelloModel(MasonBase):
+class Entrypoint(MasonBase):
+    """
+    Test model
+    """
     message: str
     name: str
 
 
 class HelloQuery(BaseModel):
+    """
+    Test model, how to use query
+    """
     message: Optional[str]
     name: Optional[str]
 
@@ -126,9 +208,9 @@ class HelloQuery(BaseModel):
 """
 
 
-@entry.get("/", response_model=HelloModel)
+@entry.get("/", response_model=Entrypoint)
 async def entrypoint(request: Request, query: HelloQuery = Depends()):
-    hm = HelloModel(
+    hm = Entrypoint(
         name=query.name or "none",
         message=query.message or "none"
     )
@@ -207,6 +289,24 @@ async def get_club_resource(request: Request, club: str, db: Session = Depends(d
 ##     ## ##   ## ##   ##
 ##     ## ######  ###### 
 """
+"""
+Functions for adding stuff, all pretty much the same thing
+"""
+
+
+def check_string(s: str):
+    """
+    Since we can't accept bad identifiers
+    """
+    s = s.strip()
+    out = quote(s, safe="")
+    # Only space is allowed
+    if s.replace(" ", "%20") != out:
+        raise HTTPException(409, f"Unacceptable value for identifier {s}")
+    # Reserve this
+    elif out == "deleted":
+        raise HTTPException(409, f"Reserved identifier value {s}")
+    return out
 
 
 @entry.post("/books", status_code=204)
@@ -216,6 +316,7 @@ async def add_book_resource(
         response: Response,
         db: Session = Depends(database)
 ):
+    check_string(book.handle)
     create_book(book, db)
     response.headers["Location"] = request.url_for("get_book_resource", book=quote(book.handle))
     response.status_code = 204
@@ -229,6 +330,7 @@ async def add_club_resource(
         response: Response,
         db: Session = Depends(database)
 ):
+    check_string(club.handle)
     create_club(club, db)
     response.headers["Location"] = request.url_for("get_club_resource", club=quote(club.handle))
     response.status_code = 204
@@ -242,6 +344,7 @@ async def add_user_resource(
         response: Response,
         db: Session = Depends(database)
 ):
+    check_string(user.username)
     create_user(user, db)
     response.headers["Location"] = request.url_for("get_user_resource", user=quote(user.username))
     response.status_code = 204
@@ -264,6 +367,7 @@ def _edit_(
         get: Callable,
         update: Callable,
         create: Callable,
+        delete: Callable,
         response: Response,
         existing: str,
         new_model: E,
@@ -280,13 +384,19 @@ def _edit_(
         if existing != identity:
             raise HTTPException(409, f"Entity identity doesn't match resource, expected: {existing} got: {identity}")
     exists = False
+    deleted = False
     if not simple_update:
         try:
             get(existing, db)
             exists = True
-        except HTTPException:
-            pass
-    if exists or simple_update:
+        except HTTPException as e:
+            # Ah fuck we have to do some mental gymnastics
+            if 'deleted' in e.detail:
+                exists = True
+                deleted = True
+            elif 'exists' in e.detail or 'taken' in e.detail:
+                exists = True
+    if (exists and not deleted) or simple_update:
         changed = update(existing, new_model, db)
         if changed is not None:
             if location:
@@ -298,6 +408,8 @@ def _edit_(
         else:
             response.status_code = 304
     else:
+        check_string((new_model.handle if hasattr(new_model, 'handle') else new_model.username))
+        delete(existing, db)
         create(new_model, db)
         response.status_code = 201
     return response
@@ -307,7 +419,7 @@ def _edit_(
 async def edit_user_resource(
         user: str,
         new_user: NewUser,
-        request: Request,
+        _: Request,  # ignored for now
         response: Response,
         db: Session = Depends(database)
 ):
@@ -315,6 +427,7 @@ async def edit_user_resource(
         get_user,
         update_user,
         create_user,
+        partial(delete_user, hard=True),
         response,
         user,
         new_user,
@@ -326,7 +439,7 @@ async def edit_user_resource(
 async def edit_book_resource(
         book: str,
         new_book: NewBook,
-        request: Request,
+        _: Request,
         response: Response,
         db: Session = Depends(database)
 ):
@@ -334,6 +447,7 @@ async def edit_book_resource(
         get_book,
         update_book,
         create_book,
+        partial(delete_book, hard=True),
         response,
         book,
         new_book,
@@ -345,7 +459,7 @@ async def edit_book_resource(
 async def edit_club_resource(
         club: str,
         new_club: NewClub,
-        request: Request,
+        _: Request,
         response: Response,
         db: Session = Depends(database)
 ):
@@ -353,6 +467,7 @@ async def edit_club_resource(
         get_club,
         update_club,
         create_club,
+        partial(delete_club, hard=True),
         response,
         club,
         new_club,

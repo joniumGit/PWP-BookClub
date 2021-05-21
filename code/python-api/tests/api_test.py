@@ -20,8 +20,8 @@ def db() -> Session:
 
 
 def hello_test():
-    from bookclub.resources.paths import HelloModel
-    model: HelloModel = HelloModel(**client.get("/").json())
+    from bookclub.resources.paths import Entrypoint
+    model: Entrypoint = Entrypoint(**client.get("/").json())
     assert model.name == "none" and model.message == "none"
 
 

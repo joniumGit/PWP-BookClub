@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Optional
 
 from pydantic import Field, BaseModel
+
 from ...mason import MasonBase
 
 
@@ -11,12 +12,10 @@ class StatusEnum(str, Enum):
     reading = 'reading'
 
 
-class NewUser(BaseModel):
+class User(MasonBase):
     username: str = Field(min_length=1, max_length=60)
     description: Optional[str] = Field(max_length=250)
 
-
-class User(NewUser, MasonBase):
     class Config:
         orm_mode = True
 
@@ -30,14 +29,12 @@ class BookStatsMixIn(MasonBase):
     disliked: int = Field(ge=0)
 
 
-class NewBook(BaseModel):
+class Book(MasonBase):
     handle: str = Field(min_length=1, max_length=60)
     full_name: str = Field(min_length=1, max_length=250)
     description: Optional[str] = Field(max_length=65000)
     pages: Optional[int] = Field(le=2000000000)
 
-
-class Book(NewBook, MasonBase):
     class Config:
         orm_mode = True
 
@@ -51,16 +48,6 @@ class UserBookInternalBase(MasonBase):
 
     class Config:
         orm_mode = True
-
-
-class NewUserBook(BaseModel):
-    user: str = Field(min_length=1, max_length=60)
-    handle: str = Field(min_length=1, max_length=60)
-    reading_status: Optional[StatusEnum]
-    reviewed: Optional[bool]
-    ignored: Optional[bool]
-    liked: Optional[bool]
-    current_page: Optional[int]
 
 
 class UserBook(UserBookInternalBase, Book):
@@ -93,14 +80,6 @@ class Club(ClubInternalBase):
     owner: Optional[str] = Field(min_length=1, max_length=60)
 
 
-class NewReview(BaseModel):
-    user: str = Field(min_length=1, max_length=60)
-    book: str = Field(min_length=1, max_length=60)
-    stars: int = Field(le=5, ge=1)
-    title: str = Field(min_length=1, max_length=120)
-    content: Optional[str] = Field(max_length=65000)
-
-
 class ReviewInternalBase(MasonBase):
     stars: int = Field(le=5, ge=1)
     title: str = Field(min_length=1, max_length=120)
@@ -113,11 +92,6 @@ class ReviewInternalBase(MasonBase):
 class Review(ReviewInternalBase):
     user: str = Field(min_length=1, max_length=60)
     book: str = Field(min_length=1, max_length=60)
-
-
-class NewComment(BaseModel):
-    user: str = Field(min_length=1, max_length=60)
-    content: str = Field(min_length=1, max_length=65000)
 
 
 class CommentInternalBase(BaseModel):
@@ -134,3 +108,52 @@ class Comment(CommentInternalBase):
 
 class CommentMason(Comment, MasonBase):
     pass
+
+
+"""
+####  ## ##### ##   ##   ##
+####  ## ##    ##   ##   ##
+## ## ## ####  ##  ###   ## 
+##  #### ##     ## #### ## 
+##   ### #####   ###  ### 
+"""
+
+
+class NewModel(BaseModel):
+    class Config:
+        anystr_strip_whitespace = True
+
+
+class NewUser(NewModel):
+    username: str = Field(min_length=1, max_length=60)
+    description: Optional[str] = Field(max_length=250)
+
+
+class NewBook(NewModel):
+    handle: str = Field(min_length=1, max_length=60)
+    full_name: str = Field(min_length=1, max_length=250)
+    description: Optional[str] = Field(max_length=65000)
+    pages: Optional[int] = Field(le=2000000000)
+
+
+class NewUserBook(NewModel):
+    user: str = Field(min_length=1, max_length=60)
+    handle: str = Field(min_length=1, max_length=60)
+    reading_status: Optional[StatusEnum]
+    reviewed: Optional[bool]
+    ignored: Optional[bool]
+    liked: Optional[bool]
+    current_page: Optional[int]
+
+
+class NewComment(NewModel):
+    user: str = Field(min_length=1, max_length=60)
+    content: str = Field(min_length=1, max_length=65000)
+
+
+class NewReview(NewModel):
+    user: str = Field(min_length=1, max_length=60)
+    book: str = Field(min_length=1, max_length=60)
+    stars: int = Field(le=5, ge=1)
+    title: str = Field(min_length=1, max_length=120)
+    content: Optional[str] = Field(max_length=65000)

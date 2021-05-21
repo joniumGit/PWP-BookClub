@@ -1,3 +1,6 @@
+"""
+Shorthands for some common exceptions
+"""
 from fastapi import HTTPException
 
 

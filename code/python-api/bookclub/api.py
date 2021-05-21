@@ -25,13 +25,17 @@ api = FastAPI()
 api.include_router(entry)
 
 
+@api.middleware("http")
 async def masonware(r: Request, call_next):
+    """
+    Workaround for transforming all uncaught exceptions to Mason
+    """
     try:
         return await call_next(r)
     except Exception as e:
-        if isinstance(e, HTTPException) or isinstance(e, LowHTTPException) or isinstance(e, RequestValidationError):
-            raise e
-        else:
+        try:
+            return api.exception_handlers.get(type(e))(r, e)
+        except (AttributeError, KeyError, TypeError):
             from logging import exception
             exception("Unhandled Exception", exc_info=e)
             return JSONResponse(
@@ -51,11 +55,11 @@ async def masonware(r: Request, call_next):
             )
 
 
-api.middleware('http')(masonware)
-
-
 @api.exception_handler(HTTPException)
 def exception_handler(r: Request, exc: HTTPException):
+    """
+    From FastAPI doc, overwriting default handlers
+    """
     return JSONResponse(
         media_type=MASON,
         status_code=exc.status_code,
@@ -75,6 +79,9 @@ def exception_handler(r: Request, exc: HTTPException):
 
 @api.exception_handler(RequestValidationError)
 def exception_handler(r: Request, exc: RequestValidationError):
+    """
+    From FastAPI doc, overwriting default handlers
+    """
     return JSONResponse(
         media_type=MASON,
         status_code=422,
@@ -97,6 +104,9 @@ def exception_handler(r: Request, exc: RequestValidationError):
 
 @api.exception_handler(LowHTTPException)
 def low_http_exception(r: Request, exc: LowHTTPException):
+    """
+    From FastAPI doc, overwriting default handlers
+    """
     return JSONResponse(
         media_type=MASON,
         status_code=exc.status_code,

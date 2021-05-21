@@ -9,7 +9,7 @@ from typing import Union, Tuple, Optional, Type, Any, TypeVar, Dict, NoReturn, S
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Row
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session, DeclarativeMeta
+from sqlalchemy.orm import Session, DeclarativeMeta, SessionTransaction
 
 from .model import data_models as external
 from .model import db_models as internal
@@ -23,26 +23,30 @@ T = TypeVar('T', bound=DeclarativeMeta)
 # Common checker functions for getting important values and handle not found states
 #
 
-def __get_handle(cls: Type[T], handle: str, db: Session, throw: bool) -> Optional[T]:
+def __delete(orm_resource: DeclarativeMeta, nested: SessionTransaction, hard: bool):
+    if hard:
+        nested.session.delete(orm_resource)
+    else:
+        orm_resource.deleted = 1
+
+
+def __get_handle(cls: Type[T], handle: str, db: Session, throw: bool = True) -> Optional[T]:
     """
     Get any orm class by handle attribute
 
     :param cls:     ORM Class
     :param handle:  Value of handle to filter by
     :param db:      ORM Session
-    :param throw:   Throw a HTTPException on failure
+    :param throw:   Throw a HTTPException on deleted model
     :return:        Instance or None if not throw
     """
     res = db.query(cls).where(getattr(cls, 'handle') == handle).first()
     if res:
-        if res.deleted:
+        if res.deleted and throw:
             raise NotFound(f"{cls.__name__} deleted: {handle}")
         return res
     else:
-        if throw:
-            raise NotFound(f"{cls.__name__} not found: {handle}")
-        else:
-            return None
+        raise NotFound(f"{cls.__name__} not found: {handle}")
 
 
 def _get_user(username: str, db: Session, throw: bool = True) -> Optional[internal.User]:
@@ -51,19 +55,16 @@ def _get_user(username: str, db: Session, throw: bool = True) -> Optional[intern
 
     :param username:    Username
     :param db:          ORM Session
-    :param throw:       Throw a HTTPException on failure
+    :param throw:       Throw a HTTPException on deleted user
     :return:            Instance or None if not throw
     """
     res = db.query(internal.User).where(internal.User.username == username).first()
     if res:
-        if res.deleted:
+        if res.deleted and throw:
             raise NotFound(f"User deleted: {username}")
         return res
     else:
-        if throw:
-            raise NotFound(f"User not found: {username}")
-        else:
-            return None
+        raise NotFound(f"User not found: {username}")
 
 
 def _get_book(handle: str, db: Session, throw: bool = True) -> Optional[internal.Book]:
@@ -137,9 +138,6 @@ def _check_handle_available(cls: Type[T], handle: str, db: Session) -> NoReturn:
     :param handle:  Handle to check
     :param db:      ORM Session
     """
-    from urllib.parse import quote
-    if handle.replace(" ", "%20") != quote(handle, safe=""):
-        raise HTTPException(409, f"Forbidden handle {handle}")
     if db.query(cls).where(getattr(cls, 'handle') == handle).count() != 0:
         raise AlreadyExists(f"{cls.__name__} with handle {handle} already exists")
 
@@ -161,9 +159,9 @@ def _add(
     """
     if extra is None:
         extra = {}
-    with db.begin_nested():
-        no = i(**e.dict(exclude_none=True, exclude=exclude), **extra)
-        db.add(no)
+    with db.begin_nested() as nested:
+        no = i(**e.dict(exclude_none=True, exclude=exclude), **extra, deleted=False)
+        nested.session.add(no)
         return no
 
 
@@ -231,16 +229,24 @@ def get_book(handle: str, db: Session, stats: bool = False, user: Union[str, ext
     :param user:    User for which book data should be included (default: None)
     :return:        See typehint
     """
+
+    def to_dict(r: Row):
+        d = dict(r)
+        if 'deleted' in d:
+            if int(d['deleted']):
+                raise NotFound(f"Book deleted: {handle}")
+        return {k: v for k, v in dict(r).items() if v is not None}
+
     try:
         c: Connection = db.connection()
         if user is not None:
             username: str
-            if isinstance(user, external.User):
-                username = user.username
-            else:
+            if isinstance(user, str):
                 username = user
+            else:
+                username = user.username
             if db.query(internal.User).where(internal.User.username == username).count() != 1:
-                raise NotFound(f"User not found {username}")
+                raise NotFound(f"User not found: {username}")
             if stats:
                 s = text(
                     f"""
@@ -248,24 +254,22 @@ def get_book(handle: str, db: Session, stats: bool = False, user: Union[str, ext
                     RIGHT JOIN user_books ubl ON ubl.book_id=b.id 
                     RIGHT JOIN books_statistics bs ON bs.handle=b.handle
                     WHERE b.handle=:handle
-                    AND b.deleted != TRUE
                     AND ubl.user_id=(SELECT id FROM users WHERE username=:uname)
                     """
                 )
                 r: Row = c.execute(s, handle=handle, uname=username).one()
-                return external.StatUserBook(**{k: v for k, v in dict(r).items() if v is not None})
+                out = external.StatUserBook(**to_dict(r))
             else:
                 s = text(
                     f"""
                     SELECT *, :uname as user FROM books b 
                     RIGHT JOIN user_books ubl ON ubl.book_id=b.id
                     WHERE b.handle=:handle
-                    AND b.deleted != TRUE
                     AND ubl.user_id=(SELECT id FROM users WHERE username=:uname)
                     """
                 )
                 r: Row = c.execute(s, handle=handle, uname=username).one()
-                return external.UserBook(**{k: v for k, v in dict(r).items() if v is not None})
+                out = external.UserBook(**to_dict(r))
         else:
             if stats:
                 s = text(
@@ -273,37 +277,38 @@ def get_book(handle: str, db: Session, stats: bool = False, user: Union[str, ext
                     SELECT * FROM books b
                     RIGHT JOIN books_statistics bs ON bs.handle=b.handle
                     WHERE b.handle=:handle
-                    AND b.deleted != TRUE
                     """
                 )
                 r: Row = c.execute(s, handle=handle).one()
-                return external.StatBook(**{k: v for k, v in dict(r).items() if v is not None})
+                out = external.StatBook(**to_dict(r))
             else:
                 result = db.query(internal.Book).where(
                     internal.Book.handle == handle
-                ).where(
-                    internal.Book.deleted != 1
                 ).one()
-                return external.Book.from_orm(result)
+                if result.deleted:
+                    raise NotFound(f"Book deleted: {handle}")
+                out = external.Book.from_orm(result)
     except NoResultFound:
-        raise NotFound(f"Failed to find data for book {handle}")
+        raise NotFound(f"Failed to find data for book: {handle}")
+    return out
 
 
-def delete_book(book: Union[str, external.NewBook], db: Session) -> NoReturn:
+def delete_book(book: Union[str, external.NewBook], db: Session, hard: bool = False) -> NoReturn:
     """
     Soft delete a book
 
+    :param hard:    Hard Delete
     :param book:    Book (handle or instance)
     :param db:      ORM Session
     """
     handle: str
-    if isinstance(book, external.Book):
-        handle = book.handle
-    else:
+    if isinstance(book, str):
         handle = book
-    b = _get_book(handle, db)
-    with db.begin_nested():
-        b.deleted = 1
+    else:
+        handle = book.handle
+    b = _get_book(handle, db, throw=not hard)
+    with db.begin_nested() as nested:
+        __delete(b, nested, hard)
 
 
 #
@@ -357,16 +362,17 @@ def get_comment(uuid: int, db: Session) -> external.CommentMason:
     )
 
 
-def delete_comment(comment: Union[int, external.Comment], db: Session) -> NoReturn:
+def delete_comment(comment: Union[int, external.Comment], db: Session, hard: bool = False) -> NoReturn:
     """
     Soft delete a comment
 
+    :param hard:    Hard Delete
     :param comment: Comment (uuid or instance)
     :param db:      ORM Session
     """
     c = _get_comment(comment.uuid, db)
-    with db.begin_nested():
-        c.deleted = 1
+    with db.begin_nested() as nested:
+        __delete(c, nested, hard)
 
 
 #
@@ -438,11 +444,13 @@ def get_review(user: Union[str, external.NewUser], book: Union[str, external.New
 
 def delete_review(
         review: Union[external.NewReview, Tuple[Union[str, external.NewBook], Union[str, external.NewUser]]],
-        db: Session
+        db: Session,
+        hard: bool = False
 ) -> NoReturn:
     """
     Soft deletes a review
 
+    :param hard:    Hard Delete
     :param review:  External review model or a Tuple(Book, User)
     :param db:      ORM Session
     """
@@ -451,9 +459,9 @@ def delete_review(
         up = review[1]
         u: internal.User
         if isinstance(up, str):
-            u = _get_user(up, db)
+            u = _get_user(up, db, throw=not hard)
         else:
-            u = _get_user(up.username, db)
+            u = _get_user(up.username, db, throw=not hard)
         bp = review[0]
         b: internal.Book
         if isinstance(bp, str):
@@ -461,16 +469,8 @@ def delete_review(
         else:
             b = _get_book(bp.handle, db)
         r = _get_review(u.username, b.handle, db)
-        with db.begin_nested():
-            r.deleted = 1
-
-
-def check_username(username: str) -> NoReturn:
-    if username == "deleted":
-        raise HTTPException(409, f"Forbidden username {username}")
-    from urllib.parse import quote
-    if username.replace(" ", "%20") != quote(username, safe=""):
-        raise HTTPException(409, f"Forbidden username {username}")
+        with db.begin_nested() as nested:
+            __delete(r, nested, hard)
 
 
 #
@@ -487,7 +487,6 @@ def create_user(user: external.NewUser, db: Session) -> str:
     if db.query(internal.User).where(internal.User.username == user.username).count() != 0:
         raise AlreadyExists(f"Username {user.username} is taken")
     else:
-        check_username(user.username)
         return _add(user, internal.User, db).username
 
 
@@ -501,7 +500,6 @@ def update_user(old_username: str, user: external.NewUser, db: Session) -> Optio
     :return:                Username of the modified resource or None if it didn't change
     """
     if old_username != user.username:
-        check_username(user.username)
         if db.query(internal.User).where(internal.User.username == user.username).count() != 0:
             raise AlreadyExists(f"Username {user.username} is taken")
     u = _get_user(old_username, db)
@@ -526,22 +524,23 @@ def get_user(username: str, db: Session) -> external.User:
     return external.User.from_orm(_get_user(username, db))
 
 
-def delete_user(user: Union[str, external.NewUser], db: Session) -> NoReturn:
+def delete_user(user: Union[str, external.NewUser], db: Session, hard: bool = False) -> NoReturn:
     """
     Soft delete a user
 
+    :param hard:    Hard Delete
     :param user:    User (username or model)
     :param db:      ORM Session
     """
     if user is not None:
         username: str
-        if isinstance(user, external.NewUser):
-            username = user.username
-        else:
+        if isinstance(user, str):
             username = user
-        u = _get_user(username, db)
-        with db.begin_nested():
-            u.deleted = 1
+        else:
+            username = user.username
+        u = _get_user(username, db, throw=not hard)
+        with db.begin_nested() as nested:
+            __delete(u, nested, hard)
 
 
 #
@@ -611,20 +610,21 @@ def get_club(handle: str, db: Session, bypass_delete: bool = False) -> external.
     )
 
 
-def delete_club(club: Union[str, external.NewClub], db: Session) -> NoReturn:
+def delete_club(club: Union[str, external.NewClub], db: Session, hard: bool = False) -> NoReturn:
     """
     Soft delete a club
 
+    :param hard:    Hard Delete
     :param club:    Club
     :param db:      ORM Session
     """
     c: internal.Club
     if isinstance(club, str):
-        c = _get_club(club, db)
+        c = _get_club(club, db, throw=not hard)
     else:
-        c = _get_club(club.handle, db)
-    with db.begin_nested():
-        c.deleted = 1
+        c = _get_club(club.handle, db, throw=not hard)
+    with db.begin_nested() as nested:
+        __delete(c, nested, hard)
 
 
 #

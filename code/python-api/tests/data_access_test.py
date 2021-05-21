@@ -156,9 +156,10 @@ def test_delete_book(book: str, db: Session):
 
 def test_delete_user(user: str, db: Session):
     uu = da.get_user(user, db)
-    da.delete_user(uu, db)
-    with pytest.raises(NotFound):
-        da.delete_user(user, db)
+    with db.begin_nested():
+        da.delete_user(uu, db)
+        with pytest.raises(NotFound):
+            da.delete_user(user, db)
 
 
 def test_delete_ubl(ubl: da.NewUserBook, db: Session):
