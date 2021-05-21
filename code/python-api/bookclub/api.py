@@ -5,6 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from starlette.exceptions import HTTPException as LowHTTPException
+from starlette.middleware.cors import CORSMiddleware
 
 from .data import *
 from .mason import MASON
@@ -24,6 +25,13 @@ api = FastAPI()
 
 api.include_router(entry)
 
+api.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @api.middleware("http")
 async def masonware(r: Request, call_next):
