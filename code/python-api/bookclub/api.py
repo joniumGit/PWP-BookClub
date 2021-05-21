@@ -25,22 +25,56 @@ api = FastAPI()
 api.include_router(entry)
 
 
+async def masonware(r: Request, call_next):
+    try:
+        return await call_next(r)
+    except Exception as e:
+        if isinstance(e, HTTPException) or isinstance(e, LowHTTPException) or isinstance(e, RequestValidationError):
+            raise e
+        else:
+            from logging import exception
+            exception("Unhandled Exception", exc_info=e)
+            return JSONResponse(
+                media_type=MASON,
+                status_code=500,
+                content={
+                    "@error": {
+                        "@message": "Internal Server Error",
+                        "@httpStatusCode": 500,
+                        "@controls": {
+                            "bc:home": {
+                                "href": str(r.base_url)
+                            }
+                        }
+                    }
+                }
+            )
+
+
+api.middleware('http')(masonware)
+
+
 @api.exception_handler(HTTPException)
-def exception_handler(_: Request, exc: HTTPException):
+def exception_handler(r: Request, exc: HTTPException):
     return JSONResponse(
         media_type=MASON,
         status_code=exc.status_code,
         content={
             "@error": {
                 "@message": exc.detail or "An exception occurred",
-                "@httpStatusCode": exc.status_code
+                "@httpStatusCode": exc.status_code,
+                "@controls": {
+                    "bc:home": {
+                        "href": str(r.base_url)
+                    }
+                }
             }
         },
     )
 
 
 @api.exception_handler(RequestValidationError)
-def exception_handler(_: Request, exc: RequestValidationError):
+def exception_handler(r: Request, exc: RequestValidationError):
     return JSONResponse(
         media_type=MASON,
         status_code=422,
@@ -50,7 +84,12 @@ def exception_handler(_: Request, exc: RequestValidationError):
                 "@messages": [
                     (e.json() if isinstance(e, ValidationError) else str(e)) for e in exc.raw_errors
                 ],
-                "@httpStatusCode": 422
+                "@httpStatusCode": 422,
+                "@controls": {
+                    "bc:home": {
+                        "href": str(r.base_url)
+                    }
+                }
             }
         },
     )
@@ -66,7 +105,7 @@ def low_http_exception(r: Request, exc: LowHTTPException):
                 "@message": exc.detail or "An exception occurred",
                 "@httpStatusCode": exc.status_code,
                 "@controls": {
-                    "index": {
+                    "bc:home": {
                         "href": str(r.base_url)
                     }
                 }

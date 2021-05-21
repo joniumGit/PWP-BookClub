@@ -15,16 +15,21 @@ import pwp.client.utils.Tuple;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import java.util.function.Function;
 
 public class MainFrame extends JFrame {
 
+    private static final long updateTime = 1000 * 60;
+
     @Getter
     private final JPanel base;
 
     private MainFrame(JPanel basePanel) throws HeadlessException {
+        setTitle("BookClub Manager");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setContentPane(basePanel);
         base = basePanel;
@@ -40,6 +45,26 @@ public class MainFrame extends JFrame {
                 var ep = new EntityPanel();
                 base.add(ep, "grow, push");
                 var tabs = new JTabbedPane();
+                var reloads = new IdentityHashMap<ListPanel<?>, Long>();
+                tabs.addChangeListener(e -> Optional
+                        .ofNullable(tabs.getSelectedComponent())
+                        .filter(ListPanel.class::isInstance)
+                        .map(ListPanel.class::cast)
+                        .ifPresent(
+                                c -> {
+                                    var time = System.currentTimeMillis();
+                                    if (!reloads.containsKey(c)) {
+                                        reloads.put(c, time);
+                                    } else {
+                                        if (time - reloads.get(c) > updateTime) {
+                                            Main.getLogger().fine("Refreshing tab");
+                                            c.reloadData();
+                                            reloads.put(c, time);
+                                        }
+                                    }
+                                }
+                        )
+                );
                 var controls = mason.get().getControls();
                 if (controls.isEmpty()) {
                     throw new CompletionException(new NullPointerException("Empty Controls"));

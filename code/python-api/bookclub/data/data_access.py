@@ -137,6 +137,9 @@ def _check_handle_available(cls: Type[T], handle: str, db: Session) -> NoReturn:
     :param handle:  Handle to check
     :param db:      ORM Session
     """
+    from urllib.parse import quote
+    if handle.replace(" ", "%20") != quote(handle, safe=""):
+        raise HTTPException(409, f"Forbidden handle {handle}")
     if db.query(cls).where(getattr(cls, 'handle') == handle).count() != 0:
         raise AlreadyExists(f"{cls.__name__} with handle {handle} already exists")
 
@@ -462,6 +465,14 @@ def delete_review(
             r.deleted = 1
 
 
+def check_username(username: str) -> NoReturn:
+    if username == "deleted":
+        raise HTTPException(409, f"Forbidden username {username}")
+    from urllib.parse import quote
+    if username.replace(" ", "%20") != quote(username, safe=""):
+        raise HTTPException(409, f"Forbidden username {username}")
+
+
 #
 # Users
 #
@@ -476,6 +487,7 @@ def create_user(user: external.NewUser, db: Session) -> str:
     if db.query(internal.User).where(internal.User.username == user.username).count() != 0:
         raise AlreadyExists(f"Username {user.username} is taken")
     else:
+        check_username(user.username)
         return _add(user, internal.User, db).username
 
 
@@ -489,6 +501,7 @@ def update_user(old_username: str, user: external.NewUser, db: Session) -> Optio
     :return:                Username of the modified resource or None if it didn't change
     """
     if old_username != user.username:
+        check_username(user.username)
         if db.query(internal.User).where(internal.User.username == user.username).count() != 0:
             raise AlreadyExists(f"Username {user.username} is taken")
     u = _get_user(old_username, db)
@@ -570,6 +583,7 @@ def update_club(old_handle: str, club: external.NewClub, db: Session) -> Optiona
     owner = _get_user(club.owner, db)
     d = club.dict(exclude_none=True, exclude={'owner'})
     with db.begin_nested():
+        changed = False
         if c.owner_id != owner.id:
             changed = True
             c.owner_id = owner.id
@@ -577,17 +591,22 @@ def update_club(old_handle: str, club: external.NewClub, db: Session) -> Optiona
         return club.handle if changed else None
 
 
-def get_club(handle: str, db: Session) -> external.Club:
+def get_club(handle: str, db: Session, bypass_delete: bool = False) -> external.Club:
     """
     Get a club
 
-    :param handle:  Club handle
-    :param db:      ORM Session
-    :return:        External Club model
+    :param bypass_delete:   Bypass deleted check
+    :param handle:          Club handle
+    :param db:              ORM Session
+    :return:                External Club model
     """
     c = _get_club(handle, db)
     return external.Club(
-        owner=c.owner.username if c.owner_id is not None else None,
+        owner=(
+            c.owner.username
+            if c.owner.deleted != 1 or bypass_delete
+            else "deleted"
+        ) if c.owner_id is not None else None,
         **external.ClubInternalBase.from_orm(c).dict(exclude_none=True)
     )
 
@@ -705,7 +724,7 @@ def get_books(db: Session) -> paths.Books:
     return u
 
 
-def get_clubs(db: Session) -> paths.Clubs:
+def get_clubs(db: Session, bypass_delete: bool = False) -> paths.Clubs:
     club = db.query(internal.Club).where(internal.Club.deleted != 1).all()
     iu = [
         external.ClubInternalBase.from_orm(x) for x in club
@@ -713,7 +732,11 @@ def get_clubs(db: Session) -> paths.Clubs:
     u = list()
     for c, ic in zip(club, iu):
         if hasattr(c, 'owner') and c.owner is not None:
-            u.append(external.Club(**ic.dict(), owner=c.owner.username))
+            u.append(external.Club(**ic.dict(), owner=(
+                c.owner.username
+                if c.owner.deleted != 1 or bypass_delete
+                else "deleted"
+            ) if c.owner_id is not None else None))
         else:
             u.append(ic)
     u = paths.Clubs(items=u)

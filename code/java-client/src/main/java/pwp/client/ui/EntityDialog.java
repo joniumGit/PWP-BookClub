@@ -8,6 +8,7 @@ import net.miginfocom.swing.MigLayout;
 import pwp.client.Main;
 import pwp.client.utils.Tuple;
 import pwp.client.utils.reflection.ReflectedField;
+import pwp.client.utils.reflection.ReflectionException;
 import pwp.client.utils.reflection.ReflectionUtils;
 
 import javax.swing.*;
@@ -30,14 +31,58 @@ public class EntityDialog {
         return show(model, (Class<T>) model.getClass(), true, message.getMessage());
     }
 
+    public static List<Tuple<ReflectedField, JTextField>> modelToPanel(
+            Object model,
+            JPanel panel,
+            boolean editable
+    ) throws ReflectionException
+    {
+        List<Tuple<ReflectedField, JTextField>> fields = new ArrayList<>();
+        for (var field : ReflectionUtils.getAllFields(model)) {
+            var type = field.getType();
+            if (!String.class.isAssignableFrom(type)
+                && !Integer.class.isAssignableFrom(type))
+            {
+                continue;
+            }
+
+            var textField = new JTextField();
+            textField.setEditable(editable);
+            var label = new JLabel();
+
+            field.get(model).map(String::valueOf).ifPresent(textField::setText);
+            Optional.ofNullable(field.getAnnotation(JsonProperty.class)).ifPresentOrElse(
+                    jp -> label.setText(jp.value()),
+                    () -> label.setText(field.getName())
+            );
+
+            if (Integer.class.isAssignableFrom(type)) {
+                textField.setInputVerifier(new InputVerifier() {
+                    @Override
+                    public boolean verify(JComponent input) {
+                        try {
+                            Integer.valueOf(((JTextField) input).getText());
+                        } catch (Exception e) {
+                            return false;
+                        }
+                        return true;
+                    }
+                });
+            }
+            fields.add(Tuple.of(field, textField));
+            panel.add(label, "left, center, grow, push");
+            panel.add(textField, "left, top, grow, push");
+        }
+        return fields;
+    }
+
     public static <T> Optional<T> show(T existing, Class<T> clazz, boolean failed, String message) {
-        var pne = new JPanel(new MigLayout("fill, ins 5, wrap 1", "[40%][60%]"));
+        var pne = new JPanel(new MigLayout("fill, ins 5, wrap 2", "[40%][60%]"));
         if (failed) {
             var text = new JTextArea("Entity was rejected by the server");
             text.setText(text.getText() + "\n" + message);
             pne.add(text, "spanx 2, center, top");
         }
-        List<Tuple<ReflectedField, JTextField>> fields = new ArrayList<>();
         try {
             T model;
             if (existing == null) {
@@ -46,38 +91,7 @@ public class EntityDialog {
             } else {
                 model = existing;
             }
-
-            for (var field : ReflectionUtils.getAllFields(model)) {
-                var type = field.getType();
-                if (!String.class.isAssignableFrom(type)
-                    && !Integer.class.isAssignableFrom(type))
-                {
-                    continue;
-                }
-                var textField = new JTextField();
-                field.get(model).map(String::valueOf).ifPresent(textField::setText);
-                var label = new JLabel();
-                Optional.ofNullable(field.getAnnotation(JsonProperty.class)).ifPresentOrElse(
-                        jp -> label.setText(jp.value()),
-                        () -> label.setText(field.getName())
-                );
-                if (Integer.class.isAssignableFrom(type)) {
-                    textField.setInputVerifier(new InputVerifier() {
-                        @Override
-                        public boolean verify(JComponent input) {
-                            try {
-                                Integer.valueOf(((JTextField) input).getText());
-                            } catch (Exception e) {
-                                return false;
-                            }
-                            return true;
-                        }
-                    });
-                }
-                fields.add(Tuple.of(field, textField));
-                pne.add(label, "left, center, grow, push");
-                pne.add(textField, "left, top, grow, push");
-            }
+            var fields = modelToPanel(model, pne, true);
             var option = JOptionPane.showConfirmDialog(
                     null,
                     pne,
@@ -89,7 +103,6 @@ public class EntityDialog {
             if (option == JOptionPane.OK_OPTION) {
                 boolean fail = false;
                 List<String> messages = new ArrayList<>();
-
                 for (var t : fields) {
                     var text = Optional.ofNullable(t.getB().getText()).map(String::trim).orElse("");
                     if (!text.isEmpty()) {
@@ -105,7 +118,6 @@ public class EntityDialog {
                         }
                     }
                 }
-
                 if (fail) {
                     return failed(
                             model,
@@ -115,7 +127,6 @@ public class EntityDialog {
                             ).build()
                     );
                 }
-
                 return Optional.of(model);
             }
         } catch (Throwable t) {

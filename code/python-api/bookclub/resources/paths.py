@@ -1,5 +1,7 @@
 from functools import partial
-from typing import Optional, TypeVar
+from http.client import HTTPException
+from typing import Optional, TypeVar, Callable
+from urllib.parse import quote
 
 from fastapi import APIRouter, Response, Request
 from pydantic import BaseModel
@@ -9,6 +11,8 @@ from ..mason import MasonBase, Control, Namespace
 
 entry = APIRouter()
 entry.get = partial(entry.get, response_model_exclude_defaults=True, response_model_exclude_none=True)
+
+quote = partial(quote, safe="")
 
 
 def path(request: Request, func: str, **kwargs):
@@ -25,18 +29,18 @@ def append_(request: Request, control: str, path_function: str, out: T, **kwargs
         out.controls.update({
             control: Control(
                 href=path(request, path_function, **{
-                    path_function.split("_")[1]: (out.handle if hasattr(out, 'handle') else out.username)
+                    path_function.split("_")[1]: quote(out.handle if hasattr(out, 'handle') else out.username)
                 }),
                 **kwargs
             )
         })
-    except Exception:
-        raise Exception(
-            f"{path_function}, "
-            + path_function.split("_")[1]
-            + ", "
-            + (out.handle if hasattr(out, 'handle') else out.username)
-        )
+    except Exception as e:
+        from logging import exception
+        exception(f"{path_function}, "
+                  + path_function.split("_")[1]
+                  + ", "
+                  + (out.handle if hasattr(out, 'handle') else out.username),
+                  exc_info=e)
     return out
 
 
@@ -213,7 +217,7 @@ async def add_book_resource(
         db: Session = Depends(database)
 ):
     create_book(book, db)
-    response.headers["Location"] = request.url_for("get_book_resource", book=book.handle)
+    response.headers["Location"] = request.url_for("get_book_resource", book=quote(book.handle))
     response.status_code = 204
     return response
 
@@ -226,12 +230,12 @@ async def add_club_resource(
         db: Session = Depends(database)
 ):
     create_club(club, db)
-    response.headers["Location"] = request.url_for("get_club_resource", club=club.handle)
+    response.headers["Location"] = request.url_for("get_club_resource", club=quote(club.handle))
     response.status_code = 204
     return response
 
 
-@entry.post("/users", status_code=204)
+@entry.post("/users", status_code=204, responses={409: {}, 415: {}})
 async def add_user_resource(
         user: NewUser,
         request: Request,
@@ -239,7 +243,7 @@ async def add_user_resource(
         db: Session = Depends(database)
 ):
     create_user(user, db)
-    response.headers["Location"] = request.url_for("get_user_resource", user=user.username)
+    response.headers["Location"] = request.url_for("get_user_resource", user=quote(user.username))
     response.status_code = 204
     return response
 
@@ -252,8 +256,54 @@ async def add_user_resource(
 ###### ######   ##     ##     
 """
 
+E = TypeVar('E', bound=BaseModel)
+entry.put = partial(entry.put, status_code=200, responses={304: {}, 201: {}, 409: {}})
 
-@entry.put("/users/{user}", status_code=204, responses={304: {}})
+
+def _edit_(
+        get: Callable,
+        update: Callable,
+        create: Callable,
+        response: Response,
+        existing: str,
+        new_model: E,
+        db: Session,
+        location: bool = False,
+        check_identity: bool = True,
+        simple_update: bool = False,
+        url: str = None
+
+):
+    # Don't change state
+    if check_identity:
+        identity = (new_model.handle if hasattr(new_model, 'handle') else new_model.username)
+        if existing != identity:
+            raise HTTPException(409, f"Entity identity doesn't match resource, expected: {existing} got: {identity}")
+    exists = False
+    if not simple_update:
+        try:
+            get(existing, db)
+            exists = True
+        except HTTPException:
+            pass
+    if exists or simple_update:
+        changed = update(existing, new_model, db)
+        if changed is not None:
+            if location:
+                # request.url_for("get_user_resource", user=new_user.username)
+                response.headers["Location"] = url
+                response.status_code = 204
+            else:
+                response.status_code = 200
+        else:
+            response.status_code = 304
+    else:
+        create(new_model, db)
+        response.status_code = 201
+    return response
+
+
+@entry.put("/users/{user}")
 async def edit_user_resource(
         user: str,
         new_user: NewUser,
@@ -261,16 +311,18 @@ async def edit_user_resource(
         response: Response,
         db: Session = Depends(database)
 ):
-    uname = update_user(user, new_user, db)
-    if uname is not None:
-        response.headers["Location"] = request.url_for("get_user_resource", user=new_user.username)
-        response.status_code = 204
-        return response
-    response.status_code = 304
-    return response
+    return _edit_(
+        get_user,
+        update_user,
+        create_user,
+        response,
+        user,
+        new_user,
+        db
+    )
 
 
-@entry.put("/books/{book}", status_code=204)
+@entry.put("/books/{book}")
 async def edit_book_resource(
         book: str,
         new_book: NewBook,
@@ -278,15 +330,18 @@ async def edit_book_resource(
         response: Response,
         db: Session = Depends(database)
 ):
-    handle = update_book(book, new_book, db)
-    if handle is not None:
-        response.headers["Location"] = request.url_for("get_book_resource", book=new_book.handle)
-        response.status_code = 204
-    response.status_code = 304
-    return response
+    return _edit_(
+        get_book,
+        update_book,
+        create_book,
+        response,
+        book,
+        new_book,
+        db
+    )
 
 
-@entry.put("/clubs/{club}", status_code=204)
+@entry.put("/clubs/{club}")
 async def edit_club_resource(
         club: str,
         new_club: NewClub,
@@ -294,12 +349,15 @@ async def edit_club_resource(
         response: Response,
         db: Session = Depends(database)
 ):
-    handle = update_club(club, new_club, db)
-    if handle is not None:
-        response.headers["Location"] = request.url_for("get_club_resource", club=new_club.handle)
-        response.status_code = 204
-    response.status_code = 304
-    return response
+    return _edit_(
+        get_club,
+        update_club,
+        create_club,
+        response,
+        club,
+        new_club,
+        db
+    )
 
 
 """

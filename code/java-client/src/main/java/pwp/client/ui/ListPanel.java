@@ -3,12 +3,13 @@ package pwp.client.ui;
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.jonium.mason.MasonControl;
 import dev.jonium.mason.MasonError;
+import dev.jonium.mason.impl.SimpleMason;
 import net.miginfocom.swing.MigLayout;
 import pwp.client.Main;
 import pwp.client.http.Client;
+import pwp.client.model.User;
 import pwp.client.model.containers.Container;
 import pwp.client.path.Relations;
-import pwp.client.utils.Tuple;
 import pwp.client.utils.reflection.ReflectionUtils;
 
 import javax.swing.*;
@@ -16,15 +17,30 @@ import java.awt.*;
 import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Vector;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class ListPanel<T> extends JPanel {
 
+    private static final Vector<ListPanel<?>> instances = new Vector<>();
+
+    public static void reload(Class<?> forClazz) {
+        synchronized (instances) {
+            if (User.class.isAssignableFrom(forClazz)) {
+                instances.forEach(ListPanel::reloadData);
+            } else {
+                instances.stream().filter(lp -> Objects.equals(lp.modelClazz, forClazz)).forEach(ListPanel::reloadData);
+            }
+        }
+    }
+
     private final MasonControl control;
-    private final DefaultListModel<Tuple<T, MasonControl>> model;
+    private final DefaultListModel<SimpleMason<T>> model;
     private final Function<T, String> handle;
     private final Class<T> modelClazz;
     private final Consumer<Boolean> buttonsEnabled;
@@ -38,6 +54,7 @@ public class ListPanel<T> extends JPanel {
     )
     {
         super(new MigLayout("fill, ins 0, gap 0, wrap 1"));
+        instances.add(this);
         setEnabled(false);
         model = new DefaultListModel<>();
         buttons = new JPanel(new MigLayout("fill, rtl", "push[][]push"));
@@ -58,7 +75,7 @@ public class ListPanel<T> extends JPanel {
             throw new ExceptionInInitializerError(t);
         }
 
-        var list = new JList<Tuple<T, MasonControl>>();
+        var list = new JList<SimpleMason<T>>();
         var delete = new JButton("Delete");
 
         buttonsEnabled = b -> {
@@ -78,18 +95,22 @@ public class ListPanel<T> extends JPanel {
                 var ind = list.getSelectedIndex();
                 if (ind != -1) {
                     var item = model.get(ind);
-                    if (item.getB() != null) {
-                        Client.getInstance().delete(item.getB().getHref()).handleAsync((v, t) -> {
+                    if (item != null) {
+                        var d = item.getControls().get(Relations.DELETE.getValue());
+                        if (d == null) {
+                            return;
+                        }
+                        Client.getInstance().delete(d.getHref()).handleAsync((v, t) -> {
                             if (t != null) {
                                 Main.handleException(t);
                             } else {
                                 Main.getLogger()
                                     .fine("Deleted: "
-                                          + item.getA()
+                                          + item
                                           + " Of class: "
                                           + new TypeReference<T>() {}.getType().getTypeName());
                             }
-                            reloadData();
+                            reload(modelClazz);
                             return v;
                         });
                     } else {
@@ -104,9 +125,9 @@ public class ListPanel<T> extends JPanel {
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         list.setModel(model);
         list.addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting() && e.getFirstIndex() != -1) {
+            if (!e.getValueIsAdjusting() && list.getSelectedIndex() != -1) {
                 try {
-                    panel.showObject(model.get(e.getFirstIndex()));
+                    panel.showObject(model.get(list.getSelectedIndex()));
                 } catch (ArrayIndexOutOfBoundsException ignore) {
 
                 }
@@ -128,10 +149,10 @@ public class ListPanel<T> extends JPanel {
                                                    if (triple.getC().isPresent()) {
                                                        addUntilExit(ctrl, t, triple.getC().get());
                                                    } else {
-                                                       reloadData().thenAcceptAsync(v -> buttonsEnabled.accept(true));
+                                                       reload(modelClazz);
                                                    }
                                                }, SwingUtilities::invokeLater),
-                            () -> reloadData().thenAcceptAsync(v -> buttonsEnabled.accept(true))
+                            () -> reload(modelClazz)
         );
     }
 
@@ -145,10 +166,16 @@ public class ListPanel<T> extends JPanel {
     }
 
     @SuppressWarnings("unchecked")
-    public CompletableFuture<Void> reloadData() {
-        return Client.getInstance().get(
-                control.getHref(),
-                (om, v) -> (Container<T>) om.readValue(v, getContainerClass())
+    public void reloadData() {
+        CompletableFuture.runAsync(
+                () -> buttonsEnabled.accept(false),
+                SwingUtilities::invokeLater
+        ).thenComposeAsync(
+                ignore -> Client.getInstance().get(
+                        control.getHref(),
+                        (om, v) -> (Container<T>) om.readValue(v, getContainerClass())
+                ),
+                ForkJoinPool.commonPool()
         ).thenAcceptAsync(opt -> opt.ifPresent(container -> {
             model.removeAllElements();
             if (buttons.getComponents().length == 1) {
@@ -166,12 +193,7 @@ public class ListPanel<T> extends JPanel {
                     continue;
                 }
                 try {
-                    model.addElement(
-                            Tuple.of(
-                                    wrapped,
-                                    item.getControls().getOrDefault(Relations.SELF.getValue(), null)
-                            )
-                    );
+                    model.addElement(item);
                 } catch (Exception e) {
                     Main.handleException(e);
                 }
@@ -195,9 +217,10 @@ public class ListPanel<T> extends JPanel {
         )
         {
             var comp = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-            comp.setText(handle.apply(((Tuple<T, ?>) value).getA()));
+            comp.setText(handle.apply(((SimpleMason<T>) value).getWrapped()));
             return comp;
         }
+
     }
 
 }
